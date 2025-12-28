@@ -4,12 +4,15 @@ import (
 	"cluster-agent/internal/models"
 	"context"
 	"fmt"
+
+	v1 "k8s.io/api/apps/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/kubernetes"
 )
 
 type DeploymentService interface {
 	GetDeployments(ctx context.Context, namespace string) ([]models.DeploymentInfo, error)
+	CreateDeployment(ctx context.Context, deployment *v1.Deployment) error
 	ScaleDeployment(ctx context.Context, params models.ScaleDeploymentParams) error
 }
 
@@ -43,6 +46,16 @@ func (d *deploymentService) GetDeployments(ctx context.Context, namespace string
 	}
 
 	return result, nil
+}
+
+func (d *deploymentService) CreateDeployment(ctx context.Context, deployment *v1.Deployment) error {
+	_, err := d.clientset.AppsV1().Deployments(deployment.Namespace).Create(ctx, deployment, metav1.CreateOptions{})
+
+	if err != nil {
+		return fmt.Errorf("failed to create deployment: %w", err)
+	}
+
+	return nil
 }
 
 func (d *deploymentService) ScaleDeployment(ctx context.Context, params models.ScaleDeploymentParams) error {

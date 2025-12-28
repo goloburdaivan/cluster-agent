@@ -2,6 +2,7 @@ package internal
 
 import (
 	"cluster-agent/internal/api/handlers"
+
 	"github.com/gin-gonic/gin"
 )
 
@@ -32,6 +33,7 @@ func (app *App) setRoutes() {
 		deployments := v1.Group("/deployments")
 		{
 			deployments.GET("", app.Handlers.Deployment.List)
+			deployments.POST("", app.Handlers.Deployment.Create)
 			deployments.PATCH("/scale", app.Handlers.Deployment.ScaleDeployment)
 		}
 
