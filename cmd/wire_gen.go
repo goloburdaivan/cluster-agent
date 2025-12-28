@@ -9,7 +9,10 @@ package main
 import (
 	"cluster-agent/internal"
 	"cluster-agent/internal/api/handlers"
+	"cluster-agent/internal/config"
+	"cluster-agent/internal/consumers"
 	"cluster-agent/internal/k8s"
+	"cluster-agent/internal/producers"
 	"cluster-agent/internal/services"
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/rest"
@@ -33,11 +36,14 @@ func InitializeApp() (*internal.App, error) {
 	serviceHandler := handlers.NewServiceHandler(kubernetesServiceService)
 	nodeService := services.NewNodeService(kubernetesInterface)
 	nodeHandler := handlers.NewNodeHandler(nodeService)
-	config := ProvideRestConfig(client)
-	terminalService := services.NewTerminalService(kubernetesInterface, config)
+	restConfig := ProvideRestConfig(client)
+	terminalService := services.NewTerminalService(kubernetesInterface, restConfig)
 	terminalHandler := handlers.NewTerminalHandler(terminalService)
 	handlerContainer := handlers.NewHandlerContainer(podHandler, deploymentHandler, namespaceHandler, serviceHandler, nodeHandler, terminalHandler)
-	app := internal.NewApp(handlerContainer)
+	configConfig := config.NewConfig()
+	eventBatcher := consumers.NewEventBatcher(configConfig)
+	eventCollector := producers.NewEventCollector(kubernetesInterface, eventBatcher)
+	app := internal.NewApp(handlerContainer, eventCollector, eventBatcher)
 	return app, nil
 }
 

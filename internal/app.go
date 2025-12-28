@@ -1,22 +1,43 @@
 package internal
 
 import (
-	"cluster-agent/internal/api/handlers"
+	"cluster-agent/internal/consumers"
+	"cluster-agent/internal/producers"
+	"context"
+	"fmt"
+	"log"
+	"net/http"
+	"os"
+	"os/signal"
+	"syscall"
+	"time"
 
+	"cluster-agent/internal/api/handlers"
 	"github.com/gin-gonic/gin"
+	"golang.org/x/sync/errgroup"
 )
 
 type App struct {
-	Router   *gin.Engine
-	Handlers *handlers.HandlerContainer
+	Router         *gin.Engine
+	Handlers       *handlers.HandlerContainer
+	EventCollector *producers.EventCollector
+	EventBatcher   *consumers.EventBatcher
 }
 
-func NewApp(h *handlers.HandlerContainer) *App {
+func NewApp(
+	h *handlers.HandlerContainer,
+	collector *producers.EventCollector,
+	batcher *consumers.EventBatcher,
+) *App {
 	app := &App{
-		Router:   gin.Default(),
-		Handlers: h,
+		Router:         gin.Default(),
+		Handlers:       h,
+		EventCollector: collector,
+		EventBatcher:   batcher,
 	}
+
 	app.setRoutes()
+
 	return app
 }
 
@@ -33,7 +54,9 @@ func (app *App) setRoutes() {
 		deployments := v1.Group("/deployments")
 		{
 			deployments.GET("", app.Handlers.Deployment.List)
+			deployments.GET("/:namespace/:name", app.Handlers.Deployment.Get)
 			deployments.POST("", app.Handlers.Deployment.Create)
+			deployments.DELETE("/:namespace/:name", app.Handlers.Deployment.Delete)
 			deployments.PATCH("/scale", app.Handlers.Deployment.ScaleDeployment)
 		}
 
@@ -55,5 +78,49 @@ func (app *App) setRoutes() {
 }
 
 func (app *App) Start() {
-	app.Router.Run(":8080")
+	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
+	defer stop()
+
+	g, gCtx := errgroup.WithContext(ctx)
+
+	srv := &http.Server{
+		Addr:    ":8080",
+		Handler: app.Router,
+	}
+
+	g.Go(func() error {
+		log.Println("Starting HTTP Server on :8080")
+		if err := srv.ListenAndServe(); err != nil && err != http.ErrServerClosed {
+			return fmt.Errorf("http server error: %w", err)
+		}
+		return nil
+	})
+
+	g.Go(func() error {
+		<-gCtx.Done()
+		log.Println("Shutting down HTTP Server...")
+
+		shutdownCtx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+		defer cancel()
+
+		return srv.Shutdown(shutdownCtx)
+	})
+
+	g.Go(func() error {
+		log.Println("Starting Event Batcher...")
+		app.EventBatcher.Run(gCtx)
+		return nil
+	})
+
+	g.Go(func() error {
+		log.Println("Starting Event Collector...")
+		app.EventCollector.Start(gCtx)
+		return nil
+	})
+
+	if err := g.Wait(); err != nil {
+		log.Printf("App stopped with error: %v", err)
+	} else {
+		log.Println("App stopped gracefully")
+	}
 }

@@ -43,6 +43,23 @@ func (handler *DeploymentHandler) List(c *gin.Context) {
 	})
 }
 
+func (handler *DeploymentHandler) Get(c *gin.Context) {
+	namespace := c.Param("namespace")
+	name := c.Param("name")
+
+	deployment, err := handler.deploymentService.GetDeployment(c.Request.Context(), namespace, name)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{
+			"error": err.Error(),
+		})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{
+		"data": deployment,
+	})
+}
+
 func (handler *DeploymentHandler) Create(c *gin.Context) {
 	var deployment v1.Deployment
 
@@ -67,6 +84,22 @@ func (handler *DeploymentHandler) Create(c *gin.Context) {
 	c.JSON(http.StatusCreated, gin.H{
 		"success": true,
 		"message": "Deployment created",
+	})
+}
+
+func (handler *DeploymentHandler) Delete(c *gin.Context) {
+	namespace := c.Param("namespace")
+	name := c.Param("name")
+	err := handler.deploymentService.DeleteDeployment(c.Request.Context(), namespace, name)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{
+			"error": err.Error(),
+		})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{
+		"success": true,
 	})
 }
 

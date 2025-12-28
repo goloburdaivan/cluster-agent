@@ -12,7 +12,9 @@ import (
 
 type DeploymentService interface {
 	GetDeployments(ctx context.Context, namespace string) ([]models.DeploymentInfo, error)
+	GetDeployment(ctx context.Context, namespace string, deploymentName string) (*v1.Deployment, error)
 	CreateDeployment(ctx context.Context, deployment *v1.Deployment) error
+	DeleteDeployment(ctx context.Context, namespace string, deploymentName string) error
 	ScaleDeployment(ctx context.Context, params models.ScaleDeploymentParams) error
 }
 
@@ -48,11 +50,34 @@ func (d *deploymentService) GetDeployments(ctx context.Context, namespace string
 	return result, nil
 }
 
+func (d *deploymentService) GetDeployment(ctx context.Context, namespace string, deploymentName string) (*v1.Deployment, error) {
+	deployment, err := d.clientset.AppsV1().Deployments(namespace).Get(ctx, deploymentName, metav1.GetOptions{})
+
+	if err != nil {
+		return nil, fmt.Errorf("failed to get deployment %s in namespace %s: %w", deploymentName, namespace, err)
+	}
+
+	deployment.Kind = "Deployment"
+	deployment.APIVersion = "apps/v1"
+	deployment.ManagedFields = nil
+
+	return deployment, nil
+}
+
 func (d *deploymentService) CreateDeployment(ctx context.Context, deployment *v1.Deployment) error {
 	_, err := d.clientset.AppsV1().Deployments(deployment.Namespace).Create(ctx, deployment, metav1.CreateOptions{})
 
 	if err != nil {
 		return fmt.Errorf("failed to create deployment: %w", err)
+	}
+
+	return nil
+}
+
+func (d *deploymentService) DeleteDeployment(ctx context.Context, namespace string, deploymentName string) error {
+	err := d.clientset.AppsV1().Deployments(namespace).Delete(ctx, deploymentName, metav1.DeleteOptions{})
+	if err != nil {
+		return fmt.Errorf("failed to delete deployment: %w", err)
 	}
 
 	return nil

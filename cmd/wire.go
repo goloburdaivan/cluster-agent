@@ -6,7 +6,10 @@ package main
 import (
 	"cluster-agent/internal"
 	"cluster-agent/internal/api/handlers"
+	"cluster-agent/internal/config"
+	"cluster-agent/internal/consumers"
 	"cluster-agent/internal/k8s"
+	"cluster-agent/internal/producers"
 	"cluster-agent/internal/services"
 	"github.com/google/wire"
 	"k8s.io/client-go/kubernetes"
@@ -37,6 +40,10 @@ func InitializeApp() (*internal.App, error) {
 		services.NewPodService,
 		services.NewServiceService,
 		services.NewTerminalService,
+
+		config.NewConfig,
+		consumers.NewEventBatcher,
+		producers.NewEventCollector,
 
 		internal.NewApp,
 	)
