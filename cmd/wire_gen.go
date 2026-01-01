@@ -14,8 +14,12 @@ import (
 	"cluster-agent/internal/k8s"
 	"cluster-agent/internal/producers"
 	"cluster-agent/internal/services"
+	"cluster-agent/internal/services/topology"
+	"k8s.io/client-go/informers"
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/rest"
+	"k8s.io/client-go/tools/cache"
+	"time"
 )
 
 // Injectors from wire.go:
@@ -39,11 +43,16 @@ func InitializeApp() (*internal.App, error) {
 	restConfig := ProvideRestConfig(client)
 	terminalService := services.NewTerminalService(kubernetesInterface, restConfig)
 	terminalHandler := handlers.NewTerminalHandler(terminalService)
-	handlerContainer := handlers.NewHandlerContainer(podHandler, deploymentHandler, namespaceHandler, serviceHandler, nodeHandler, terminalHandler)
+	service := topology.NewTopologyService()
+	sharedInformerFactory := ProvideInformerFactory(kubernetesInterface)
+	snapshotService := services.NewSnapshotService(sharedInformerFactory)
+	topologyHandler := handlers.NewTopologyHandler(service, snapshotService)
+	handlerContainer := handlers.NewHandlerContainer(podHandler, deploymentHandler, namespaceHandler, serviceHandler, nodeHandler, terminalHandler, topologyHandler)
 	configConfig := config.NewConfig()
 	eventBatcher := consumers.NewEventBatcher(configConfig)
-	eventCollector := producers.NewEventCollector(kubernetesInterface, eventBatcher)
-	app := internal.NewApp(handlerContainer, eventCollector, eventBatcher)
+	sharedIndexInformer := ProvideEventInformer(sharedInformerFactory)
+	eventCollector := producers.NewEventCollector(eventBatcher, sharedIndexInformer)
+	app := internal.NewApp(handlerContainer, eventCollector, eventBatcher, sharedInformerFactory)
 	return app, nil
 }
 
@@ -55,4 +64,12 @@ func ProvideK8sInterface(client *k8s.Client) kubernetes.Interface {
 
 func ProvideRestConfig(client *k8s.Client) *rest.Config {
 	return client.GetConfig()
+}
+
+func ProvideInformerFactory(clientset kubernetes.Interface) informers.SharedInformerFactory {
+	return informers.NewSharedInformerFactory(clientset, 12*time.Hour)
+}
+
+func ProvideEventInformer(factory informers.SharedInformerFactory) cache.SharedIndexInformer {
+	return factory.Core().V1().Events().Informer()
 }
