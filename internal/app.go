@@ -4,7 +4,9 @@ import (
 	"cluster-agent/internal/consumers"
 	"cluster-agent/internal/producers"
 	"context"
+	"errors"
 	"fmt"
+	"k8s.io/client-go/informers"
 	"log"
 	"net/http"
 	"os"
@@ -18,22 +20,25 @@ import (
 )
 
 type App struct {
-	Router         *gin.Engine
-	Handlers       *handlers.HandlerContainer
-	EventCollector *producers.EventCollector
-	EventBatcher   *consumers.EventBatcher
+	Router          *gin.Engine
+	Handlers        *handlers.HandlerContainer
+	EventCollector  *producers.EventCollector
+	EventBatcher    *consumers.EventBatcher
+	InformerFactory informers.SharedInformerFactory
 }
 
 func NewApp(
 	h *handlers.HandlerContainer,
 	collector *producers.EventCollector,
 	batcher *consumers.EventBatcher,
+	factory informers.SharedInformerFactory,
 ) *App {
 	app := &App{
-		Router:         gin.Default(),
-		Handlers:       h,
-		EventCollector: collector,
-		EventBatcher:   batcher,
+		Router:          gin.Default(),
+		Handlers:        h,
+		EventCollector:  collector,
+		EventBatcher:    batcher,
+		InformerFactory: factory,
 	}
 
 	app.setRoutes()
@@ -74,6 +79,11 @@ func (app *App) setRoutes() {
 		{
 			node.GET("", app.Handlers.Node.List)
 		}
+
+		topology := v1.Group("/topology")
+		{
+			topology.GET("", app.Handlers.Topology.Get)
+		}
 	}
 }
 
@@ -90,7 +100,7 @@ func (app *App) Start() {
 
 	g.Go(func() error {
 		log.Println("Starting HTTP Server on :8080")
-		if err := srv.ListenAndServe(); err != nil && err != http.ErrServerClosed {
+		if err := srv.ListenAndServe(); err != nil && !errors.Is(err, http.ErrServerClosed) {
 			return fmt.Errorf("http server error: %w", err)
 		}
 		return nil
@@ -113,8 +123,19 @@ func (app *App) Start() {
 	})
 
 	g.Go(func() error {
-		log.Println("Starting Event Collector...")
-		app.EventCollector.Start(gCtx)
+		log.Println("Starting Shared Informer Factory...")
+		app.InformerFactory.Start(gCtx.Done())
+
+		log.Println("Waiting for cache sync...")
+		results := app.InformerFactory.WaitForCacheSync(gCtx.Done())
+
+		for resType, synced := range results {
+			if !synced {
+				return fmt.Errorf("failed to sync cache for resource: %v", resType)
+			}
+		}
+
+		log.Println("All caches synced successfully!")
 		return nil
 	})
 

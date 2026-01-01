@@ -5,44 +5,41 @@ import (
 	"cluster-agent/internal/services/graph"
 )
 
-type DeploymentServiceRule struct {
+type WorkloadServiceRule struct {
 }
 
-func (r *DeploymentServiceRule) Apply(
+func (r *WorkloadServiceRule) Apply(
 	s *models.ClusterSnapshot,
 	b *graph.Builder,
 ) error {
 
 	for _, d := range s.Deployments {
-		dNode := graph.Node{
-			ID:   "deployment:" + d.Namespace + "/" + d.Name,
-			Kind: "Deployment",
-			Name: d.Name,
-		}
-		b.AddNode(dNode)
+		workloadID := id("Deployment", d.Namespace, d.Name)
 
 		for _, svc := range s.Services {
 			if svc.Namespace != d.Namespace {
 				continue
 			}
 
-			if labelsMatch(
-				svc.Spec.Selector,
-				d.Spec.Template.Labels,
-			) {
-				svcNode := graph.Node{
-					ID:   "service:" + svc.Namespace + "/" + svc.Name,
-					Kind: "Service",
-					Name: svc.Name,
-				}
-				b.AddNode(svcNode)
-
-				b.AddEdge(graph.Edge{
-					Source: dNode.ID,
-					Target: svcNode.ID,
-				})
+			if labelsMatch(svc.Spec.Selector, d.Spec.Template.Labels) {
+				b.AddEdge(edge(workloadID, id("Service", svc.Namespace, svc.Name)))
 			}
 		}
 	}
+
+	for _, ss := range s.StatefulSets {
+		workloadID := id("StatefulSet", ss.Namespace, ss.Name)
+
+		for _, svc := range s.Services {
+			if svc.Namespace != ss.Namespace {
+				continue
+			}
+
+			if labelsMatch(svc.Spec.Selector, ss.Spec.Template.Labels) {
+				b.AddEdge(edge(workloadID, id("Service", svc.Namespace, svc.Name)))
+			}
+		}
+	}
+
 	return nil
 }
