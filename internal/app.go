@@ -54,6 +54,7 @@ func (app *App) setRoutes() {
 			pods.GET("", app.Handlers.Pod.List)
 			pods.GET("/:namespace/:name", app.Handlers.Pod.Get)
 			pods.GET("/:namespace/:name/exec", app.Handlers.Terminal.Exec)
+			pods.GET("/:namespace/:name/logs", app.Handlers.PodLogs.StreamLogs)
 		}
 
 		deployments := v1.Group("/deployments")
@@ -68,6 +69,30 @@ func (app *App) setRoutes() {
 		services := v1.Group("/services")
 		{
 			services.GET("", app.Handlers.Service.List)
+			services.GET("/:namespace/:name", app.Handlers.Service.Get)
+		}
+
+		configmaps := v1.Group("/configmaps")
+		{
+			configmaps.GET("", app.Handlers.ConfigMaps.List)
+			configmaps.GET("/:namespace/:name", app.Handlers.ConfigMaps.Get)
+		}
+
+		secrets := v1.Group("/secrets")
+		{
+			secrets.GET("", app.Handlers.Secrets.List)
+			secrets.GET("/:namespace/:name", app.Handlers.Secrets.Get)
+		}
+
+		ingresses := v1.Group("/ingresses")
+		{
+			ingresses.GET("", app.Handlers.Ingresses.List)
+			ingresses.GET("/:namespace/:name", app.Handlers.Ingresses.Get)
+		}
+
+		pvcs := v1.Group("/persistentvolumeclaims")
+		{
+			pvcs.GET("", app.Handlers.Pvcs.List)
 		}
 
 		namespace := v1.Group("/namespaces")

@@ -55,6 +55,11 @@ func InitializeApp() (*internal.App, error) {
 		services.NewServiceService,
 		services.NewTerminalService,
 		services.NewSnapshotService,
+		services.NewPodLogsService,
+		services.NewIngressService,
+		services.NewPVCService,
+		services.NewConfigMapService,
+		services.NewSecretService,
 		topology.NewTopologyService,
 
 		config.NewConfig,

@@ -5,7 +5,6 @@ import (
 	"context"
 	"encoding/json"
 	"io"
-	"net/http"
 	"sync"
 
 	"cluster-agent/internal/services"
@@ -30,14 +29,6 @@ type TerminalMessage struct {
 	Data string `json:"data,omitempty"`
 	Rows uint16 `json:"rows,omitempty"`
 	Cols uint16 `json:"cols,omitempty"`
-}
-
-var upgrader = websocket.Upgrader{
-	ReadBufferSize:  1024,
-	WriteBufferSize: 1024,
-	CheckOrigin: func(r *http.Request) bool {
-		return true
-	},
 }
 
 func (h *TerminalHandler) Exec(c *gin.Context) {

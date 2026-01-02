@@ -9,7 +9,8 @@ import (
 )
 
 type KubernetesServiceService interface {
-	GetServices(ctx context.Context, namespace string) ([]models.ServiceInfo, error)
+	List(ctx context.Context, namespace string) ([]models.ServiceInfo, error)
+	Get(ctx context.Context, namespace, name string) (*models.ServiceDetails, error)
 }
 
 type service struct {
@@ -22,7 +23,7 @@ func NewServiceService(clientset kubernetes.Interface) KubernetesServiceService 
 	}
 }
 
-func (s *service) GetServices(ctx context.Context, namespace string) ([]models.ServiceInfo, error) {
+func (s *service) List(ctx context.Context, namespace string) ([]models.ServiceInfo, error) {
 	list, err := s.clientset.CoreV1().Services(namespace).List(ctx, metav1.ListOptions{})
 	if err != nil {
 		return nil, fmt.Errorf("failed to list services: %w", err)
@@ -45,4 +46,41 @@ func (s *service) GetServices(ctx context.Context, namespace string) ([]models.S
 		})
 	}
 	return result, nil
+}
+
+func (s *service) Get(ctx context.Context, namespace, name string) (*models.ServiceDetails, error) {
+	svc, err := s.clientset.CoreV1().Services(namespace).Get(ctx, name, metav1.GetOptions{})
+	if err != nil {
+		return nil, err
+	}
+
+	ports := make([]int32, 0, len(svc.Spec.Ports))
+	for _, p := range svc.Spec.Ports {
+		ports = append(ports, p.Port)
+	}
+
+	var extIPs []string
+	extIPs = append(extIPs, svc.Spec.ExternalIPs...)
+	for _, ing := range svc.Status.LoadBalancer.Ingress {
+		if ing.IP != "" {
+			extIPs = append(extIPs, ing.IP)
+		} else if ing.Hostname != "" {
+			extIPs = append(extIPs, ing.Hostname)
+		}
+	}
+
+	return &models.ServiceDetails{
+		ServiceInfo: models.ServiceInfo{
+			Name:      svc.Name,
+			Namespace: svc.Namespace,
+			Type:      models.ServiceType(svc.Spec.Type),
+			ClusterIP: svc.Spec.ClusterIP,
+			Selector:  svc.Spec.Selector,
+			Ports:     ports,
+		},
+		FullPorts:   svc.Spec.Ports,
+		ExternalIPs: extIPs,
+		UID:         string(svc.UID),
+		Age:         svc.CreationTimestamp.Time,
+	}, nil
 }

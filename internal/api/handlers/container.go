@@ -11,6 +11,11 @@ var HandlerSet = wire.NewSet(
 	NewTerminalHandler,
 	NewHandlerContainer,
 	NewTopologyHandler,
+	NewPodLogsHandler,
+	NewConfigMapHandler,
+	NewSecretHandler,
+	NewIngressHandler,
+	NewPvcHandler,
 )
 
 type HandlerContainer struct {
@@ -21,6 +26,11 @@ type HandlerContainer struct {
 	Node       *NodeHandler
 	Terminal   *TerminalHandler
 	Topology   *TopologyHandler
+	PodLogs    *PodLogsHandler
+	ConfigMaps *ConfigMapHandler
+	Secrets    *SecretHandler
+	Ingresses  *IngressHandler
+	Pvcs       *PvcHandler
 }
 
 func NewHandlerContainer(
@@ -31,6 +41,11 @@ func NewHandlerContainer(
 	node *NodeHandler,
 	terminal *TerminalHandler,
 	topology *TopologyHandler,
+	podLogs *PodLogsHandler,
+	configmaps *ConfigMapHandler,
+	secrets *SecretHandler,
+	ingresses *IngressHandler,
+	pvcs *PvcHandler,
 ) *HandlerContainer {
 	return &HandlerContainer{
 		Pod:        pod,
@@ -40,5 +55,10 @@ func NewHandlerContainer(
 		Node:       node,
 		Terminal:   terminal,
 		Topology:   topology,
+		PodLogs:    podLogs,
+		ConfigMaps: configmaps,
+		Secrets:    secrets,
+		Ingresses:  ingresses,
+		Pvcs:       pvcs,
 	}
 }

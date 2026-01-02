@@ -26,7 +26,7 @@ func (handler *ServiceHandler) List(c *gin.Context) {
 		return
 	}
 
-	result, err := handler.service.GetServices(c.Request.Context(), request.Namespace)
+	result, err := handler.service.List(c.Request.Context(), request.Namespace)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{
 			"error": err.Error(),
@@ -36,5 +36,19 @@ func (handler *ServiceHandler) List(c *gin.Context) {
 
 	c.JSON(http.StatusOK, gin.H{
 		"data": result,
+	})
+}
+
+func (handler *ServiceHandler) Get(c *gin.Context) {
+	data, err := handler.service.Get(c.Request.Context(), c.Param("namespace"), c.Param("name"))
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{
+			"error": err.Error(),
+		})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{
+		"data": data,
 	})
 }
