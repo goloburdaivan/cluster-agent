@@ -11,6 +11,9 @@ type ConfigMapListInfo struct {
 
 type ConfigMapDetails struct {
 	ConfigMapListInfo
-	Data map[string]string `json:"data"`
-	UID  string            `json:"uid"`
+	Data        map[string]string `json:"data"`
+	UID         string            `json:"uid"`
+	Labels      map[string]string `json:"labels"`
+	Annotations map[string]string `json:"annotations"`
+	Immutable   *bool             `json:"immutable,omitempty"`
 }

@@ -12,6 +12,10 @@ type SecretListInfo struct {
 
 type SecretDetails struct {
 	SecretListInfo
-	Data map[string][]byte `json:"data"`
-	UID  string            `json:"uid"`
+	Data   map[string][]byte `json:"data"`
+	UID    string            `json:"uid"`
+	Labels map[string]string `json:"labels"`
+
+	Annotations map[string]string `json:"annotations"`
+	Immutable   *bool             `json:"immutable,omitempty"`
 }

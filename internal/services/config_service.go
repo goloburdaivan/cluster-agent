@@ -4,6 +4,7 @@ import (
 	"cluster-agent/internal/models"
 	"context"
 	"fmt"
+	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/kubernetes"
 )
@@ -19,7 +20,7 @@ type configMapService struct {
 
 func NewConfigMapService(c kubernetes.Interface) ConfigMapService {
 	return &configMapService{
-		c,
+		clientset: c,
 	}
 }
 
@@ -28,16 +29,10 @@ func (s *configMapService) List(ctx context.Context, namespace string) ([]models
 	if err != nil {
 		return nil, fmt.Errorf("failed list cm: %w", err)
 	}
+
 	result := make([]models.ConfigMapListInfo, 0, len(list.Items))
 	for _, item := range list.Items {
-		keys := make([]string, 0, len(item.Data))
-		for k := range item.Data {
-			keys = append(keys, k)
-		}
-
-		result = append(result, models.ConfigMapListInfo{
-			Name: item.Name, Namespace: item.Namespace, Keys: keys, Age: item.CreationTimestamp.Time,
-		})
+		result = append(result, s.mapToListInfo(&item))
 	}
 	return result, nil
 }
@@ -48,13 +43,30 @@ func (s *configMapService) Get(ctx context.Context, namespace, name string) (*mo
 		return nil, err
 	}
 
-	keys := make([]string, 0, len(item.Data))
+	return &models.ConfigMapDetails{
+		ConfigMapListInfo: s.mapToListInfo(item),
+		Data:              item.Data,
+		Labels:            item.Labels,
+		Annotations:       item.Annotations,
+		Immutable:         item.Immutable,
+		UID:               string(item.UID),
+	}, nil
+}
+
+func (s *configMapService) mapToListInfo(item *corev1.ConfigMap) models.ConfigMapListInfo {
+	keys := make([]string, 0, len(item.Data)+len(item.BinaryData))
+
 	for k := range item.Data {
 		keys = append(keys, k)
 	}
+	for k := range item.BinaryData {
+		keys = append(keys, k)
+	}
 
-	return &models.ConfigMapDetails{
-		ConfigMapListInfo: models.ConfigMapListInfo{Name: item.Name, Namespace: item.Namespace, Keys: keys, Age: item.CreationTimestamp.Time},
-		Data:              item.Data, UID: string(item.UID),
-	}, nil
+	return models.ConfigMapListInfo{
+		Name:      item.Name,
+		Namespace: item.Namespace,
+		Keys:      keys,
+		Age:       item.CreationTimestamp.Time,
+	}
 }

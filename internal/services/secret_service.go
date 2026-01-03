@@ -4,6 +4,7 @@ import (
 	"cluster-agent/internal/models"
 	"context"
 	"fmt"
+	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/kubernetes"
 )
@@ -19,7 +20,7 @@ type secretService struct {
 
 func NewSecretService(c kubernetes.Interface) SecretService {
 	return &secretService{
-		c,
+		clientset: c,
 	}
 }
 
@@ -31,14 +32,7 @@ func (s *secretService) List(ctx context.Context, namespace string) ([]models.Se
 
 	result := make([]models.SecretListInfo, 0, len(list.Items))
 	for _, item := range list.Items {
-		keys := make([]string, 0, len(item.Data))
-		for k := range item.Data {
-			keys = append(keys, k)
-		}
-
-		result = append(result, models.SecretListInfo{
-			Name: item.Name, Namespace: item.Namespace, Type: string(item.Type), Keys: keys, Age: item.CreationTimestamp.Time,
-		})
+		result = append(result, s.mapToListInfo(&item))
 	}
 	return result, nil
 }
@@ -49,13 +43,27 @@ func (s *secretService) Get(ctx context.Context, namespace, name string) (*model
 		return nil, err
 	}
 
+	return &models.SecretDetails{
+		SecretListInfo: s.mapToListInfo(item),
+		Data:           item.Data,
+		UID:            string(item.UID),
+		Labels:         item.Labels,
+		Annotations:    item.Annotations,
+		Immutable:      item.Immutable,
+	}, nil
+}
+
+func (s *secretService) mapToListInfo(item *corev1.Secret) models.SecretListInfo {
 	keys := make([]string, 0, len(item.Data))
 	for k := range item.Data {
 		keys = append(keys, k)
 	}
 
-	return &models.SecretDetails{
-		SecretListInfo: models.SecretListInfo{Name: item.Name, Namespace: item.Namespace, Type: string(item.Type), Keys: keys, Age: item.CreationTimestamp.Time},
-		Data:           item.Data, UID: string(item.UID),
-	}, nil
+	return models.SecretListInfo{
+		Name:      item.Name,
+		Namespace: item.Namespace,
+		Type:      string(item.Type),
+		Keys:      keys,
+		Age:       item.CreationTimestamp.Time,
+	}
 }
