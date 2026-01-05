@@ -19,4 +19,5 @@ type PVCDetails struct {
 	StorageClass *string                             `json:"storage_class"`
 	VolumeName   string                              `json:"volume_name"`
 	UID          string                              `json:"uid"`
+	MountedBy    []string                            `json:"mounted_by"`
 }

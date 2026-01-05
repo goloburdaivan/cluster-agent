@@ -93,6 +93,7 @@ func (app *App) setRoutes() {
 		pvcs := v1.Group("/persistentvolumeclaims")
 		{
 			pvcs.GET("", app.Handlers.Pvcs.List)
+			pvcs.GET("/:namespace/:name", app.Handlers.Pvcs.Get)
 		}
 
 		namespace := v1.Group("/namespaces")

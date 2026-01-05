@@ -23,3 +23,14 @@ func (h *PvcHandler) List(c *gin.Context) {
 	}
 	c.JSON(200, gin.H{"data": data})
 }
+
+func (h *PvcHandler) Get(c *gin.Context) {
+	data, err := h.service.Get(c.Request.Context(), c.Param("namespace"), c.Param("name"))
+
+	if err != nil {
+		c.JSON(404, gin.H{"error": err.Error()})
+		return
+	}
+
+	c.JSON(200, data)
+}

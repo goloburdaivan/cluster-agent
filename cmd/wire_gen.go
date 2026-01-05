@@ -17,6 +17,7 @@ import (
 	"cluster-agent/internal/services/topology"
 	"k8s.io/client-go/informers"
 	"k8s.io/client-go/kubernetes"
+	"k8s.io/client-go/listers/core/v1"
 	"k8s.io/client-go/rest"
 	"k8s.io/client-go/tools/cache"
 	"time"
@@ -55,7 +56,8 @@ func InitializeApp() (*internal.App, error) {
 	secretHandler := handlers.NewSecretHandler(secretService)
 	ingressService := services.NewIngressService(kubernetesInterface)
 	ingressHandler := handlers.NewIngressHandler(ingressService)
-	pvcService := services.NewPVCService(kubernetesInterface)
+	podLister := ProvidePodLister(sharedInformerFactory)
+	pvcService := services.NewPVCService(kubernetesInterface, podLister)
 	pvcHandler := handlers.NewPvcHandler(pvcService)
 	handlerContainer := handlers.NewHandlerContainer(podHandler, deploymentHandler, namespaceHandler, serviceHandler, nodeHandler, terminalHandler, topologyHandler, podLogsHandler, configMapHandler, secretHandler, ingressHandler, pvcHandler)
 	configConfig := config.NewConfig()
@@ -82,4 +84,8 @@ func ProvideInformerFactory(clientset kubernetes.Interface) informers.SharedInfo
 
 func ProvideEventInformer(factory informers.SharedInformerFactory) cache.SharedIndexInformer {
 	return factory.Core().V1().Events().Informer()
+}
+
+func ProvidePodLister(factory informers.SharedInformerFactory) v1.PodLister {
+	return factory.Core().V1().Pods().Lister()
 }

@@ -15,6 +15,7 @@ import (
 	"github.com/google/wire"
 	"k8s.io/client-go/informers"
 	"k8s.io/client-go/kubernetes"
+	corelisters "k8s.io/client-go/listers/core/v1"
 	"k8s.io/client-go/rest"
 	"k8s.io/client-go/tools/cache"
 	"time"
@@ -36,12 +37,17 @@ func ProvideEventInformer(factory informers.SharedInformerFactory) cache.SharedI
 	return factory.Core().V1().Events().Informer()
 }
 
+func ProvidePodLister(factory informers.SharedInformerFactory) corelisters.PodLister {
+	return factory.Core().V1().Pods().Lister()
+}
+
 func InitializeApp() (*internal.App, error) {
 	wire.Build(
 		k8s.NewClient,
 
 		ProvideInformerFactory,
 		ProvideEventInformer,
+		ProvidePodLister,
 		ProvideK8sInterface,
 		ProvideRestConfig,
 
