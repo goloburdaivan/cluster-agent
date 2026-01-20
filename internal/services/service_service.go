@@ -4,6 +4,8 @@ import (
 	"cluster-agent/internal/models"
 	"context"
 	"fmt"
+
+	k8serrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/kubernetes"
 )
@@ -51,7 +53,10 @@ func (s *service) List(ctx context.Context, namespace string) ([]models.ServiceI
 func (s *service) Get(ctx context.Context, namespace, name string) (*models.ServiceDetails, error) {
 	svc, err := s.clientset.CoreV1().Services(namespace).Get(ctx, name, metav1.GetOptions{})
 	if err != nil {
-		return nil, err
+		if k8serrors.IsNotFound(err) {
+			return nil, ErrNotFound
+		}
+		return nil, fmt.Errorf("failed to get service: %w", err)
 	}
 
 	ports := make([]int32, 0, len(svc.Spec.Ports))

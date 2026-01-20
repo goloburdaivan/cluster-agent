@@ -16,21 +16,23 @@ var HandlerSet = wire.NewSet(
 	NewSecretHandler,
 	NewIngressHandler,
 	NewPvcHandler,
+	NewNetworkInspectorHandler,
 )
 
 type HandlerContainer struct {
-	Pod        *PodHandler
-	Deployment *DeploymentHandler
-	Namespace  *NamespaceHandler
-	Service    *ServiceHandler
-	Node       *NodeHandler
-	Terminal   *TerminalHandler
-	Topology   *TopologyHandler
-	PodLogs    *PodLogsHandler
-	ConfigMaps *ConfigMapHandler
-	Secrets    *SecretHandler
-	Ingresses  *IngressHandler
-	Pvcs       *PvcHandler
+	Pod              *PodHandler
+	Deployment       *DeploymentHandler
+	Namespace        *NamespaceHandler
+	Service          *ServiceHandler
+	Node             *NodeHandler
+	Terminal         *TerminalHandler
+	Topology         *TopologyHandler
+	PodLogs          *PodLogsHandler
+	ConfigMaps       *ConfigMapHandler
+	Secrets          *SecretHandler
+	Ingresses        *IngressHandler
+	Pvcs             *PvcHandler
+	NetworkInspector *NetworkInspectorHandler
 }
 
 func NewHandlerContainer(
@@ -46,19 +48,21 @@ func NewHandlerContainer(
 	secrets *SecretHandler,
 	ingresses *IngressHandler,
 	pvcs *PvcHandler,
+	networkInspector *NetworkInspectorHandler,
 ) *HandlerContainer {
 	return &HandlerContainer{
-		Pod:        pod,
-		Deployment: deployment,
-		Namespace:  namespace,
-		Service:    service,
-		Node:       node,
-		Terminal:   terminal,
-		Topology:   topology,
-		PodLogs:    podLogs,
-		ConfigMaps: configmaps,
-		Secrets:    secrets,
-		Ingresses:  ingresses,
-		Pvcs:       pvcs,
+		Pod:              pod,
+		Deployment:       deployment,
+		Namespace:        namespace,
+		Service:          service,
+		Node:             node,
+		Terminal:         terminal,
+		Topology:         topology,
+		PodLogs:          podLogs,
+		ConfigMaps:       configmaps,
+		Secrets:          secrets,
+		Ingresses:        ingresses,
+		Pvcs:             pvcs,
+		NetworkInspector: networkInspector,
 	}
 }

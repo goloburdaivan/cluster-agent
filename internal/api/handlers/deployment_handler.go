@@ -1,9 +1,10 @@
 package handlers
 
 import (
-	"cluster-agent/internal/api/requests"
+	"cluster-agent/internal/api/responses"
 	"cluster-agent/internal/models"
 	"cluster-agent/internal/services"
+	"errors"
 	"net/http"
 
 	"github.com/gin-gonic/gin"
@@ -21,26 +22,16 @@ func NewDeploymentHandler(deploymentService services.DeploymentService) *Deploym
 }
 
 func (handler *DeploymentHandler) List(c *gin.Context) {
-	var query requests.NamespaceQueryRequest
-	if err := c.ShouldBindQuery(&query); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{
-			"error": err.Error(),
-		})
-		return
-	}
+	namespace := c.Query("namespace")
 
-	deployments, err := handler.deploymentService.GetDeployments(c.Request.Context(), query.Namespace)
+	deployments, err := handler.deploymentService.GetDeployments(c.Request.Context(), namespace)
 
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{
-			"error": err.Error(),
-		})
+		c.JSON(http.StatusInternalServerError, responses.Error(err.Error()))
 		return
 	}
 
-	c.JSON(http.StatusOK, gin.H{
-		"data": deployments,
-	})
+	c.JSON(http.StatusOK, responses.Success(deployments))
 }
 
 func (handler *DeploymentHandler) Get(c *gin.Context) {
@@ -49,42 +40,33 @@ func (handler *DeploymentHandler) Get(c *gin.Context) {
 
 	deployment, err := handler.deploymentService.GetDeployment(c.Request.Context(), namespace, name)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{
-			"error": err.Error(),
-		})
+		if errors.Is(err, services.ErrNotFound) {
+			c.JSON(http.StatusNotFound, responses.Error(err.Error()))
+			return
+		}
+
+		c.JSON(http.StatusInternalServerError, responses.Error(err.Error()))
 		return
 	}
 
-	c.JSON(http.StatusOK, gin.H{
-		"data": deployment,
-	})
+	c.JSON(http.StatusOK, responses.Success(deployment))
 }
 
 func (handler *DeploymentHandler) Create(c *gin.Context) {
 	var deployment v1.Deployment
 
 	if err := c.ShouldBindJSON(&deployment); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{
-			"success": false,
-			"error":   err.Error(),
-		})
+		c.JSON(http.StatusBadRequest, responses.Error(err.Error()))
 		return
 	}
 
 	err := handler.deploymentService.CreateDeployment(c.Request.Context(), &deployment)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{
-			"success": false,
-			"message": "Failed to create deployment",
-			"error":   err.Error(),
-		})
+		c.JSON(http.StatusInternalServerError, responses.Error(err.Error()))
 		return
 	}
 
-	c.JSON(http.StatusCreated, gin.H{
-		"success": true,
-		"message": "Deployment created",
-	})
+	c.JSON(http.StatusCreated, responses.Success(deployment))
 }
 
 func (handler *DeploymentHandler) Delete(c *gin.Context) {
@@ -92,38 +74,35 @@ func (handler *DeploymentHandler) Delete(c *gin.Context) {
 	name := c.Param("name")
 	err := handler.deploymentService.DeleteDeployment(c.Request.Context(), namespace, name)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{
-			"error": err.Error(),
-		})
+		if errors.Is(err, services.ErrNotFound) {
+			c.JSON(http.StatusNotFound, responses.Error(err.Error()))
+			return
+		}
+
+		c.JSON(http.StatusInternalServerError, responses.Error(err.Error()))
 		return
 	}
 
-	c.JSON(http.StatusOK, gin.H{
-		"success": true,
-	})
+	c.JSON(http.StatusOK, responses.Success("OK"))
 }
 
 func (handler *DeploymentHandler) ScaleDeployment(c *gin.Context) {
 	var request models.ScaleDeploymentParams
 	if err := c.ShouldBindJSON(&request); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{
-			"success": false,
-			"error":   err.Error(),
-		})
+		c.JSON(http.StatusBadRequest, responses.Error(err.Error()))
 		return
 	}
 
 	err := handler.deploymentService.ScaleDeployment(c.Request.Context(), request)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{
-			"success": false,
-			"error":   err.Error(),
-		})
+		if errors.Is(err, services.ErrNotFound) {
+			c.JSON(http.StatusNotFound, responses.Error(err.Error()))
+			return
+		}
+
+		c.JSON(http.StatusInternalServerError, responses.Error(err.Error()))
 		return
 	}
 
-	c.JSON(http.StatusOK, gin.H{
-		"success": true,
-		"message": "Deployment scaled",
-	})
+	c.JSON(http.StatusOK, responses.Success("OK"))
 }

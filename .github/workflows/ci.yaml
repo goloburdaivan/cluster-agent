@@ -1,0 +1,34 @@
+name: Test API
+
+on:
+  push:
+    branches: [ "main", "master" ]
+    paths:
+      - '**.go'
+      - 'go.mod'
+      - 'go.sum'
+  pull_request:
+    branches: [ "main", "master" ]
+
+jobs:
+  test:
+    name: Run Go Tests
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: '1.22'
+          cache: true
+
+      - name: Run Go Generate
+        run: go generate ./...
+
+      - name: Install Dependencies
+        run: go mod download
+
+      - name: Run Tests
+        run: go test -v -coverage -race ./internal/api/...

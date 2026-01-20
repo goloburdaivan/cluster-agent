@@ -9,6 +9,8 @@ package main
 import (
 	"cluster-agent/internal"
 	"cluster-agent/internal/api/handlers"
+	"cluster-agent/internal/api/middleware"
+	"cluster-agent/internal/cache"
 	"cluster-agent/internal/config"
 	"cluster-agent/internal/consumers"
 	"cluster-agent/internal/k8s"
@@ -19,16 +21,16 @@ import (
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/listers/core/v1"
 	"k8s.io/client-go/rest"
-	"k8s.io/client-go/tools/cache"
+	cache2 "k8s.io/client-go/tools/cache"
 	"time"
 )
 
 // Injectors from wire.go:
 
-func InitializeApp() (*internal.App, error) {
+func InitializeApp() (*internal.App, func(), error) {
 	client, err := k8s.NewClient()
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 	kubernetesInterface := ProvideK8sInterface(client)
 	podService := services.NewPodService(kubernetesInterface)
@@ -44,7 +46,13 @@ func InitializeApp() (*internal.App, error) {
 	restConfig := ProvideRestConfig(client)
 	terminalService := services.NewTerminalService(kubernetesInterface, restConfig)
 	terminalHandler := handlers.NewTerminalHandler(terminalService)
-	service := topology.NewTopologyService()
+	configConfig := config.NewConfig()
+	redisClient, cleanup, err := cache.NewRedisClient(configConfig)
+	if err != nil {
+		return nil, nil, err
+	}
+	topologyCache := cache.NewTopologyCache(redisClient)
+	service := topology.NewTopologyService(topologyCache)
 	sharedInformerFactory := ProvideInformerFactory(kubernetesInterface)
 	snapshotService := services.NewSnapshotService(sharedInformerFactory)
 	topologyHandler := handlers.NewTopologyHandler(service, snapshotService)
@@ -59,13 +67,17 @@ func InitializeApp() (*internal.App, error) {
 	podLister := ProvidePodLister(sharedInformerFactory)
 	pvcService := services.NewPVCService(kubernetesInterface, podLister)
 	pvcHandler := handlers.NewPvcHandler(pvcService)
-	handlerContainer := handlers.NewHandlerContainer(podHandler, deploymentHandler, namespaceHandler, serviceHandler, nodeHandler, terminalHandler, topologyHandler, podLogsHandler, configMapHandler, secretHandler, ingressHandler, pvcHandler)
-	configConfig := config.NewConfig()
+	networkInspectorService := services.NewNetworkInspectorService(kubernetesInterface, restConfig)
+	networkInspectorHandler := handlers.NewNetworkInspectorHandler(networkInspectorService)
+	handlerContainer := handlers.NewHandlerContainer(podHandler, deploymentHandler, namespaceHandler, serviceHandler, nodeHandler, terminalHandler, topologyHandler, podLogsHandler, configMapHandler, secretHandler, ingressHandler, pvcHandler, networkInspectorHandler)
+	authorizedMiddleware := middleware.NewAuthorizedMiddleware(configConfig)
 	eventBatcher := consumers.NewEventBatcher(configConfig)
 	sharedIndexInformer := ProvideEventInformer(sharedInformerFactory)
 	eventCollector := producers.NewEventCollector(eventBatcher, sharedIndexInformer)
-	app := internal.NewApp(handlerContainer, eventCollector, eventBatcher, sharedInformerFactory)
-	return app, nil
+	app := internal.NewApp(handlerContainer, authorizedMiddleware, eventCollector, eventBatcher, sharedInformerFactory)
+	return app, func() {
+		cleanup()
+	}, nil
 }
 
 // wire.go:
@@ -82,7 +94,7 @@ func ProvideInformerFactory(clientset kubernetes.Interface) informers.SharedInfo
 	return informers.NewSharedInformerFactory(clientset, 12*time.Hour)
 }
 
-func ProvideEventInformer(factory informers.SharedInformerFactory) cache.SharedIndexInformer {
+func ProvideEventInformer(factory informers.SharedInformerFactory) cache2.SharedIndexInformer {
 	return factory.Core().V1().Events().Informer()
 }
 

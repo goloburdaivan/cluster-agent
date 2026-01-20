@@ -4,7 +4,9 @@ import (
 	"cluster-agent/internal/models"
 	"context"
 	"fmt"
+
 	corev1 "k8s.io/api/core/v1"
+	k8serrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/kubernetes"
 )
@@ -40,7 +42,10 @@ func (s *configMapService) List(ctx context.Context, namespace string) ([]models
 func (s *configMapService) Get(ctx context.Context, namespace, name string) (*models.ConfigMapDetails, error) {
 	item, err := s.clientset.CoreV1().ConfigMaps(namespace).Get(ctx, name, metav1.GetOptions{})
 	if err != nil {
-		return nil, err
+		if k8serrors.IsNotFound(err) {
+			return nil, ErrNotFound
+		}
+		return nil, fmt.Errorf("failed to get configmap: %w", err)
 	}
 
 	return &models.ConfigMapDetails{

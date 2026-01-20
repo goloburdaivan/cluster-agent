@@ -2,13 +2,12 @@ package k8s
 
 import (
 	"fmt"
-	"os"
-	"path/filepath"
-
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/rest"
 	"k8s.io/client-go/tools/clientcmd"
 	"k8s.io/client-go/util/homedir"
+	"os"
+	"path/filepath"
 )
 
 type Client struct {
@@ -39,6 +38,9 @@ func NewClient() (*Client, error) {
 			return nil, fmt.Errorf("failed to load k8s config: %w", err)
 		}
 	}
+
+	config.QPS = 100
+	config.Burst = 200
 
 	clientset, err := kubernetes.NewForConfig(config)
 	if err != nil {

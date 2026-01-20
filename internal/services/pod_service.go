@@ -4,7 +4,9 @@ import (
 	"cluster-agent/internal/models"
 	"context"
 	"fmt"
+
 	corev1 "k8s.io/api/core/v1"
+	k8serrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/kubernetes"
 )
@@ -61,7 +63,10 @@ func (p *podService) GetPods(ctx context.Context, namespace string) ([]models.Po
 func (p *podService) GetPod(ctx context.Context, namespace, name string) (*models.PodDetails, error) {
 	rawPod, err := p.clientset.CoreV1().Pods(namespace).Get(ctx, name, metav1.GetOptions{})
 	if err != nil {
-		return nil, err
+		if k8serrors.IsNotFound(err) {
+			return nil, ErrNotFound
+		}
+		return nil, fmt.Errorf("failed to get pod: %w", err)
 	}
 
 	return p.mapToDetails(rawPod), nil

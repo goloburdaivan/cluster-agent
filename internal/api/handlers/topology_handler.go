@@ -1,11 +1,12 @@
 package handlers
 
 import (
-	"cluster-agent/internal/api/requests"
+	"cluster-agent/internal/api/responses"
 	"cluster-agent/internal/services"
 	"cluster-agent/internal/services/topology"
-	"github.com/gin-gonic/gin"
 	"net/http"
+
+	"github.com/gin-gonic/gin"
 )
 
 type TopologyHandler struct {
@@ -24,30 +25,19 @@ func NewTopologyHandler(
 }
 
 func (h *TopologyHandler) Get(c *gin.Context) {
-	var request requests.NamespaceQueryRequest
-	if err := c.ShouldBindQuery(&request); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{
-			"error": err.Error(),
-		})
-		return
-	}
+	namespace := c.Query("namespace")
 
-	snapshot, err := h.snapshotter.TakeClusterSnapshot(request.Namespace)
+	snapshot, err := h.snapshotter.TakeClusterSnapshot(namespace)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{
-			"error": err.Error(),
-		})
+		c.JSON(http.StatusInternalServerError, responses.Error(err.Error()))
 		return
 	}
 
-	result, err := h.service.BuildFromSnapshot(snapshot)
-
+	result, err := h.service.BuildFromSnapshot(c.Request.Context(), snapshot)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{
-			"error": err.Error(),
-		})
+		c.JSON(http.StatusInternalServerError, responses.Error(err.Error()))
 		return
 	}
 
-	c.JSON(http.StatusOK, result)
+	c.JSON(http.StatusOK, responses.Success(result))
 }

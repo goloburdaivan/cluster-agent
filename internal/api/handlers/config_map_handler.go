@@ -1,8 +1,11 @@
 package handlers
 
 import (
-	"cluster-agent/internal/api/requests"
+	"cluster-agent/internal/api/responses"
 	"cluster-agent/internal/services"
+	"errors"
+	"net/http"
+
 	"github.com/gin-gonic/gin"
 )
 
@@ -13,24 +16,25 @@ func NewConfigMapHandler(s services.ConfigMapService) *ConfigMapHandler {
 }
 
 func (h *ConfigMapHandler) List(c *gin.Context) {
-	var req requests.NamespaceQueryRequest
-	if err := c.ShouldBindQuery(&req); err != nil {
-		c.JSON(400, gin.H{"error": err.Error()})
-		return
-	}
-	data, err := h.service.List(c.Request.Context(), req.Namespace)
+	namespace := c.Query("namespace")
+
+	data, err := h.service.List(c.Request.Context(), namespace)
 	if err != nil {
-		c.JSON(500, gin.H{"error": err.Error()})
+		c.JSON(http.StatusInternalServerError, responses.Error(err.Error()))
 		return
 	}
-	c.JSON(200, gin.H{"data": data})
+	c.JSON(http.StatusOK, responses.Success(data))
 }
 
 func (h *ConfigMapHandler) Get(c *gin.Context) {
 	data, err := h.service.Get(c.Request.Context(), c.Param("namespace"), c.Param("name"))
 	if err != nil {
-		c.JSON(404, gin.H{"error": err.Error()})
+		if errors.Is(err, services.ErrNotFound) {
+			c.JSON(http.StatusNotFound, responses.Error(err.Error()))
+			return
+		}
+		c.JSON(http.StatusInternalServerError, responses.Error(err.Error()))
 		return
 	}
-	c.JSON(200, data)
+	c.JSON(http.StatusOK, responses.Success(data))
 }

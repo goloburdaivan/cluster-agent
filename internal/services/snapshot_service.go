@@ -83,6 +83,7 @@ func (s snapshotService) TakeClusterSnapshot(namespace string) (*models.ClusterS
 	snapshot.ConfigMaps = configMaps
 	snapshot.Secrets = secrets
 	snapshot.PVCs = pvcs
+	snapshot.Namespace = namespace
 
 	return &snapshot, nil
 }

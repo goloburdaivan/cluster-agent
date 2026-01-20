@@ -14,4 +14,5 @@ type ClusterSnapshot struct {
 	ConfigMaps   []*corev1.ConfigMap
 	Secrets      []*corev1.Secret
 	PVCs         []*corev1.PersistentVolumeClaim
+	Namespace    string
 }

@@ -6,7 +6,9 @@ import (
 	"fmt"
 
 	v1 "k8s.io/api/apps/v1"
+	k8serrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+
 	"k8s.io/client-go/kubernetes"
 )
 
@@ -54,7 +56,11 @@ func (d *deploymentService) GetDeployment(ctx context.Context, namespace string,
 	deployment, err := d.clientset.AppsV1().Deployments(namespace).Get(ctx, deploymentName, metav1.GetOptions{})
 
 	if err != nil {
-		return nil, fmt.Errorf("failed to get deployment %s in namespace %s: %w", deploymentName, namespace, err)
+		if k8serrors.IsNotFound(err) {
+			return nil, ErrNotFound
+		}
+
+		return nil, fmt.Errorf("k8s API error: %w", err)
 	}
 
 	deployment.Kind = "Deployment"
@@ -77,6 +83,10 @@ func (d *deploymentService) CreateDeployment(ctx context.Context, deployment *v1
 func (d *deploymentService) DeleteDeployment(ctx context.Context, namespace string, deploymentName string) error {
 	err := d.clientset.AppsV1().Deployments(namespace).Delete(ctx, deploymentName, metav1.DeleteOptions{})
 	if err != nil {
+		if k8serrors.IsNotFound(err) {
+			return ErrNotFound
+		}
+
 		return fmt.Errorf("failed to delete deployment: %w", err)
 	}
 
@@ -87,6 +97,10 @@ func (d *deploymentService) ScaleDeployment(ctx context.Context, params models.S
 	return executeWithRetry("scale deployment", func() error {
 		scale, err := d.clientset.AppsV1().Deployments(params.Namespace).GetScale(ctx, params.Name, metav1.GetOptions{})
 		if err != nil {
+			if k8serrors.IsNotFound(err) {
+				return ErrNotFound
+			}
+
 			return err
 		}
 

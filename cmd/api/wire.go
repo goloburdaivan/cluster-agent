@@ -6,6 +6,8 @@ package main
 import (
 	"cluster-agent/internal"
 	"cluster-agent/internal/api/handlers"
+	"cluster-agent/internal/api/middleware"
+	cache2 "cluster-agent/internal/cache"
 	"cluster-agent/internal/config"
 	"cluster-agent/internal/consumers"
 	"cluster-agent/internal/k8s"
@@ -41,8 +43,9 @@ func ProvidePodLister(factory informers.SharedInformerFactory) corelisters.PodLi
 	return factory.Core().V1().Pods().Lister()
 }
 
-func InitializeApp() (*internal.App, error) {
+func InitializeApp() (*internal.App, func(), error) {
 	wire.Build(
+		config.NewConfig,
 		k8s.NewClient,
 
 		ProvideInformerFactory,
@@ -51,7 +54,12 @@ func InitializeApp() (*internal.App, error) {
 		ProvideK8sInterface,
 		ProvideRestConfig,
 
+		cache2.NewRedisClient,
+		cache2.NewTopologyCache,
+		wire.Bind(new(topology.TopologyCacheStorage), new(*cache2.TopologyCache)),
+
 		handlers.HandlerSet,
+		middleware.NewAuthorizedMiddleware,
 
 		// Services
 		services.NewDeploymentService,
@@ -66,13 +74,14 @@ func InitializeApp() (*internal.App, error) {
 		services.NewPVCService,
 		services.NewConfigMapService,
 		services.NewSecretService,
+		services.NewNetworkInspectorService,
 		topology.NewTopologyService,
 
-		config.NewConfig,
 		consumers.NewEventBatcher,
 		producers.NewEventCollector,
 
 		internal.NewApp,
 	)
-	return &internal.App{}, nil
+
+	return &internal.App{}, nil, nil
 }

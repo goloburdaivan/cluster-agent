@@ -1,10 +1,12 @@
 package handlers
 
 import (
-	"cluster-agent/internal/api/requests"
+	"cluster-agent/internal/api/responses"
 	"cluster-agent/internal/services"
-	"github.com/gin-gonic/gin"
+	"errors"
 	"net/http"
+
+	"github.com/gin-gonic/gin"
 )
 
 type PodHandler struct {
@@ -18,27 +20,15 @@ func NewPodHandler(podService services.PodService) *PodHandler {
 }
 
 func (handler *PodHandler) List(c *gin.Context) {
-	var request requests.NamespaceQueryRequest
+	namespace := c.Query("namespace")
 
-	if err := c.ShouldBindQuery(&request); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{
-			"error": err.Error(),
-		})
-		return
-	}
-
-	pods, err := handler.podService.GetPods(c.Request.Context(), request.Namespace)
-
+	pods, err := handler.podService.GetPods(c.Request.Context(), namespace)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{
-			"error": err.Error(),
-		})
+		c.JSON(http.StatusInternalServerError, responses.Error(err.Error()))
 		return
 	}
 
-	c.JSON(http.StatusOK, gin.H{
-		"data": pods,
-	})
+	c.JSON(http.StatusOK, responses.Success(pods))
 }
 
 func (handler *PodHandler) Get(c *gin.Context) {
@@ -47,11 +37,13 @@ func (handler *PodHandler) Get(c *gin.Context) {
 
 	pod, err := handler.podService.GetPod(c.Request.Context(), namespace, name)
 	if err != nil {
-		c.JSON(404, gin.H{
-			"error": "Pod not found: " + err.Error(),
-		})
+		if errors.Is(err, services.ErrNotFound) {
+			c.JSON(http.StatusNotFound, responses.Error(err.Error()))
+			return
+		}
+		c.JSON(http.StatusInternalServerError, responses.Error(err.Error()))
 		return
 	}
 
-	c.JSON(200, pod)
+	c.JSON(http.StatusOK, responses.Success(pod))
 }

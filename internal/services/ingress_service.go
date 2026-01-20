@@ -3,6 +3,9 @@ package services
 import (
 	"cluster-agent/internal/models"
 	"context"
+	"fmt"
+
+	k8serrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/kubernetes"
 )
@@ -47,7 +50,10 @@ func (s *ingressService) List(ctx context.Context, namespace string) ([]models.I
 func (s *ingressService) Get(ctx context.Context, namespace, name string) (*models.IngressDetails, error) {
 	item, err := s.clientset.NetworkingV1().Ingresses(namespace).Get(ctx, name, metav1.GetOptions{})
 	if err != nil {
-		return nil, err
+		if k8serrors.IsNotFound(err) {
+			return nil, ErrNotFound
+		}
+		return nil, fmt.Errorf("failed to get ingress: %w", err)
 	}
 
 	var rules []string
