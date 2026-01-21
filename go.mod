@@ -3,7 +3,6 @@ module cluster-agent
 go 1.25.0
 
 require (
-	github.com/cilium/ebpf v0.20.0
 	github.com/gin-gonic/gin v1.11.0
 	github.com/golang-jwt/jwt/v5 v5.3.0
 	github.com/google/wire v0.7.0
