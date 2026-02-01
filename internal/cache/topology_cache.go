@@ -6,8 +6,9 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"github.com/redis/go-redis/v9"
 	"time"
+
+	"github.com/redis/go-redis/v9"
 )
 
 const (
@@ -63,4 +64,9 @@ func (c *TopologyCache) Set(ctx context.Context, namespace string, topology *gra
 	}
 
 	return nil
+}
+
+func (c *TopologyCache) Invalidate(ctx context.Context, namespace string) error {
+	cacheKey := cacheKeyPrefix + namespace
+	return c.redisClient.Del(ctx, cacheKey).Err()
 }

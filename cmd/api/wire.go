@@ -6,21 +6,24 @@ package main
 import (
 	"cluster-agent/internal"
 	"cluster-agent/internal/api/handlers"
+	"cluster-agent/internal/api/listeners"
 	"cluster-agent/internal/api/middleware"
 	cache2 "cluster-agent/internal/cache"
 	"cluster-agent/internal/config"
 	"cluster-agent/internal/consumers"
+	"cluster-agent/internal/events"
 	"cluster-agent/internal/k8s"
 	"cluster-agent/internal/producers"
 	"cluster-agent/internal/services"
 	"cluster-agent/internal/services/topology"
+	"time"
+
 	"github.com/google/wire"
 	"k8s.io/client-go/informers"
 	"k8s.io/client-go/kubernetes"
 	corelisters "k8s.io/client-go/listers/core/v1"
 	"k8s.io/client-go/rest"
 	"k8s.io/client-go/tools/cache"
-	"time"
 )
 
 func ProvideK8sInterface(client *k8s.Client) kubernetes.Interface {
@@ -43,6 +46,10 @@ func ProvidePodLister(factory informers.SharedInformerFactory) corelisters.PodLi
 	return factory.Core().V1().Pods().Lister()
 }
 
+func ProvideEventDispatcher() *events.EventDispatcher {
+	return events.NewEventDispatcher(5, 100)
+}
+
 func InitializeApp() (*internal.App, func(), error) {
 	wire.Build(
 		config.NewConfig,
@@ -57,6 +64,9 @@ func InitializeApp() (*internal.App, func(), error) {
 		cache2.NewRedisClient,
 		cache2.NewTopologyCache,
 		wire.Bind(new(topology.TopologyCacheStorage), new(*cache2.TopologyCache)),
+		wire.Bind(new(listeners.TopologyCacheInvalidator), new(*cache2.TopologyCache)),
+
+		listeners.NewTopologyCacheListener,
 
 		handlers.HandlerSet,
 		middleware.NewAuthorizedMiddleware,
@@ -79,6 +89,8 @@ func InitializeApp() (*internal.App, func(), error) {
 
 		consumers.NewEventBatcher,
 		producers.NewEventCollector,
+		producers.NewTopologyInvalidator,
+		ProvideEventDispatcher,
 
 		internal.NewApp,
 	)

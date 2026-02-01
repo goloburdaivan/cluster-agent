@@ -9,10 +9,12 @@ package main
 import (
 	"cluster-agent/internal"
 	"cluster-agent/internal/api/handlers"
+	"cluster-agent/internal/api/listeners"
 	"cluster-agent/internal/api/middleware"
 	"cluster-agent/internal/cache"
 	"cluster-agent/internal/config"
 	"cluster-agent/internal/consumers"
+	"cluster-agent/internal/events"
 	"cluster-agent/internal/k8s"
 	"cluster-agent/internal/producers"
 	"cluster-agent/internal/services"
@@ -74,7 +76,10 @@ func InitializeApp() (*internal.App, func(), error) {
 	eventBatcher := consumers.NewEventBatcher(configConfig)
 	sharedIndexInformer := ProvideEventInformer(sharedInformerFactory)
 	eventCollector := producers.NewEventCollector(eventBatcher, sharedIndexInformer)
-	app := internal.NewApp(handlerContainer, authorizedMiddleware, eventCollector, eventBatcher, sharedInformerFactory)
+	eventDispatcher := ProvideEventDispatcher()
+	topologyInvalidator := producers.NewTopologyInvalidator(eventDispatcher, sharedInformerFactory)
+	topologyCacheListener := listeners.NewTopologyCacheListener(topologyCache)
+	app := internal.NewApp(handlerContainer, authorizedMiddleware, eventCollector, topologyInvalidator, topologyCacheListener, eventBatcher, eventDispatcher, service, sharedInformerFactory)
 	return app, func() {
 		cleanup()
 	}, nil
@@ -100,4 +105,8 @@ func ProvideEventInformer(factory informers.SharedInformerFactory) cache2.Shared
 
 func ProvidePodLister(factory informers.SharedInformerFactory) v1.PodLister {
 	return factory.Core().V1().Pods().Lister()
+}
+
+func ProvideEventDispatcher() *events.EventDispatcher {
+	return events.NewEventDispatcher(5, 100)
 }

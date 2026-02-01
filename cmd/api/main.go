@@ -1,14 +1,15 @@
 package main
 
-import "log"
+import (
+	"log"
+)
 
 func main() {
 	app, cleanup, err := InitializeApp()
-	defer cleanup()
-
 	if err != nil {
 		log.Fatal(err)
 	}
+	defer cleanup()
 
 	app.Start()
 }

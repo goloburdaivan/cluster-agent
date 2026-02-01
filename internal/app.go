@@ -4,6 +4,7 @@ import (
 	"cluster-agent/internal/api/middleware"
 	"cluster-agent/internal/auth/permissions"
 	"cluster-agent/internal/consumers"
+	"cluster-agent/internal/events"
 	"cluster-agent/internal/producers"
 	"context"
 	"errors"
@@ -18,39 +19,58 @@ import (
 	"k8s.io/client-go/informers"
 
 	"cluster-agent/internal/api/handlers"
+	"cluster-agent/internal/api/listeners"
+	"cluster-agent/internal/services/topology"
 
 	"github.com/gin-gonic/gin"
 	"golang.org/x/sync/errgroup"
 )
 
 type App struct {
-	Router               *gin.Engine
-	Handlers             *handlers.HandlerContainer
-	EventCollector       *producers.EventCollector
-	EventBatcher         *consumers.EventBatcher
-	InformerFactory      informers.SharedInformerFactory
-	authorizedMiddleware *middleware.AuthorizedMiddleware
+	Router                *gin.Engine
+	Handlers              *handlers.HandlerContainer
+	EventCollector        *producers.EventCollector
+	TopologyInvalidator   *producers.TopologyInvalidator
+	TopologyCacheListener *listeners.TopologyCacheListener
+	EventBatcher          *consumers.EventBatcher
+	EventDispatcher       *events.EventDispatcher
+	TopologyService       topology.Service
+	InformerFactory       informers.SharedInformerFactory
+	authorizedMiddleware  *middleware.AuthorizedMiddleware
 }
 
 func NewApp(
 	h *handlers.HandlerContainer,
 	authorizedMiddleware *middleware.AuthorizedMiddleware,
 	collector *producers.EventCollector,
+	invalidator *producers.TopologyInvalidator,
+	topologyCacheListener *listeners.TopologyCacheListener,
 	batcher *consumers.EventBatcher,
+	dispatcher *events.EventDispatcher,
+	topologyService topology.Service,
 	factory informers.SharedInformerFactory,
 ) *App {
 	app := &App{
-		Router:               gin.Default(),
-		Handlers:             h,
-		authorizedMiddleware: authorizedMiddleware,
-		EventCollector:       collector,
-		EventBatcher:         batcher,
-		InformerFactory:      factory,
+		Router:                gin.Default(),
+		Handlers:              h,
+		authorizedMiddleware:  authorizedMiddleware,
+		EventCollector:        collector,
+		TopologyInvalidator:   invalidator,
+		TopologyCacheListener: topologyCacheListener,
+		EventBatcher:          batcher,
+		EventDispatcher:       dispatcher,
+		TopologyService:       topologyService,
+		InformerFactory:       factory,
 	}
 
 	app.setRoutes()
+	app.setupEventListeners()
 
 	return app
+}
+
+func (app *App) setupEventListeners() {
+	events.RegisterListener(app.EventDispatcher, app.TopologyCacheListener.Handle)
 }
 
 func (app *App) setRoutes() {
