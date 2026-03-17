@@ -1,4 +1,4 @@
-package producers
+package observers
 
 import (
 	"cluster-agent/internal/consumers"
@@ -8,7 +8,7 @@ import (
 	"k8s.io/client-go/tools/cache"
 )
 
-type EventCollector struct {
+type EventsObserver struct {
 	informer cache.SharedIndexInformer
 	batcher  *consumers.EventBatcher
 }
@@ -16,8 +16,8 @@ type EventCollector struct {
 func NewEventCollector(
 	batcher *consumers.EventBatcher,
 	informer cache.SharedIndexInformer,
-) *EventCollector {
-	collector := &EventCollector{
+) *EventsObserver {
+	collector := &EventsObserver{
 		informer: informer,
 		batcher:  batcher,
 	}
@@ -34,7 +34,7 @@ func NewEventCollector(
 	return collector
 }
 
-func (e *EventCollector) handleEvent(obj interface{}) {
+func (e *EventsObserver) handleEvent(obj interface{}) {
 	event, ok := obj.(*corev1.Event)
 	if !ok {
 		return
@@ -45,7 +45,7 @@ func (e *EventCollector) handleEvent(obj interface{}) {
 	e.batcher.Push(event)
 }
 
-func (e *EventCollector) handleEventUpdate(oldObj, newObj interface{}) {
+func (e *EventsObserver) handleEventUpdate(oldObj, newObj interface{}) {
 	newEvent, ok := newObj.(*corev1.Event)
 	if !ok {
 		return

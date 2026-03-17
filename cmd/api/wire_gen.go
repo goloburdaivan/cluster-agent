@@ -16,9 +16,10 @@ import (
 	"cluster-agent/internal/consumers"
 	"cluster-agent/internal/events"
 	"cluster-agent/internal/k8s"
-	"cluster-agent/internal/producers"
+	"cluster-agent/internal/observers"
 	"cluster-agent/internal/services"
 	"cluster-agent/internal/services/topology"
+	"k8s.io/client-go/dynamic"
 	"k8s.io/client-go/informers"
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/listers/core/v1"
@@ -75,11 +76,17 @@ func InitializeApp() (*internal.App, func(), error) {
 	authorizedMiddleware := middleware.NewAuthorizedMiddleware(configConfig)
 	eventBatcher := consumers.NewEventBatcher(configConfig)
 	sharedIndexInformer := ProvideEventInformer(sharedInformerFactory)
-	eventCollector := producers.NewEventCollector(eventBatcher, sharedIndexInformer)
+	eventsObserver := observers.NewEventCollector(eventBatcher, sharedIndexInformer)
 	eventDispatcher := ProvideEventDispatcher()
-	topologyInvalidator := producers.NewTopologyInvalidator(eventDispatcher, sharedInformerFactory)
+	topologyObserver := observers.NewTopologyInvalidator(eventDispatcher, sharedInformerFactory)
+	dynamicInterface, err := ProvideDynamicClient(restConfig)
+	if err != nil {
+		cleanup()
+		return nil, nil, err
+	}
+	trivyVulnerabilityObserver := observers.NewTrivyVulnerabilityObserver(dynamicInterface)
 	topologyCacheListener := listeners.NewTopologyCacheListener(topologyCache)
-	app := internal.NewApp(handlerContainer, authorizedMiddleware, eventCollector, topologyInvalidator, topologyCacheListener, eventBatcher, eventDispatcher, service, sharedInformerFactory)
+	app := internal.NewApp(handlerContainer, authorizedMiddleware, eventsObserver, topologyObserver, trivyVulnerabilityObserver, topologyCacheListener, eventBatcher, eventDispatcher, service, sharedInformerFactory)
 	return app, func() {
 		cleanup()
 	}, nil
@@ -109,4 +116,8 @@ func ProvidePodLister(factory informers.SharedInformerFactory) v1.PodLister {
 
 func ProvideEventDispatcher() *events.EventDispatcher {
 	return events.NewEventDispatcher(5, 100)
+}
+
+func ProvideDynamicClient(cfg *rest.Config) (dynamic.Interface, error) {
+	return dynamic.NewForConfig(cfg)
 }

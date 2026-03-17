@@ -5,7 +5,7 @@ import (
 	"cluster-agent/internal/auth/permissions"
 	"cluster-agent/internal/consumers"
 	"cluster-agent/internal/events"
-	"cluster-agent/internal/producers"
+	"cluster-agent/internal/observers"
 	"context"
 	"errors"
 	"fmt"
@@ -27,23 +27,25 @@ import (
 )
 
 type App struct {
-	Router                *gin.Engine
-	Handlers              *handlers.HandlerContainer
-	EventCollector        *producers.EventCollector
-	TopologyInvalidator   *producers.TopologyInvalidator
-	TopologyCacheListener *listeners.TopologyCacheListener
-	EventBatcher          *consumers.EventBatcher
-	EventDispatcher       *events.EventDispatcher
-	TopologyService       topology.Service
-	InformerFactory       informers.SharedInformerFactory
-	authorizedMiddleware  *middleware.AuthorizedMiddleware
+	Router                     *gin.Engine
+	Handlers                   *handlers.HandlerContainer
+	EventCollector             *observers.EventsObserver
+	TopologyInvalidator        *observers.TopologyObserver
+	TrivyVulnerabilityObserver *observers.TrivyVulnerabilityObserver
+	TopologyCacheListener      *listeners.TopologyCacheListener
+	EventBatcher               *consumers.EventBatcher
+	EventDispatcher            *events.EventDispatcher
+	TopologyService            topology.Service
+	InformerFactory            informers.SharedInformerFactory
+	authorizedMiddleware       *middleware.AuthorizedMiddleware
 }
 
 func NewApp(
 	h *handlers.HandlerContainer,
 	authorizedMiddleware *middleware.AuthorizedMiddleware,
-	collector *producers.EventCollector,
-	invalidator *producers.TopologyInvalidator,
+	collector *observers.EventsObserver,
+	invalidator *observers.TopologyObserver,
+	trivyObserver *observers.TrivyVulnerabilityObserver,
 	topologyCacheListener *listeners.TopologyCacheListener,
 	batcher *consumers.EventBatcher,
 	dispatcher *events.EventDispatcher,
@@ -51,16 +53,17 @@ func NewApp(
 	factory informers.SharedInformerFactory,
 ) *App {
 	app := &App{
-		Router:                gin.Default(),
-		Handlers:              h,
-		authorizedMiddleware:  authorizedMiddleware,
-		EventCollector:        collector,
-		TopologyInvalidator:   invalidator,
-		TopologyCacheListener: topologyCacheListener,
-		EventBatcher:          batcher,
-		EventDispatcher:       dispatcher,
-		TopologyService:       topologyService,
-		InformerFactory:       factory,
+		Router:                     gin.Default(),
+		Handlers:                   h,
+		authorizedMiddleware:       authorizedMiddleware,
+		EventCollector:             collector,
+		TopologyInvalidator:        invalidator,
+		TrivyVulnerabilityObserver: trivyObserver,
+		TopologyCacheListener:      topologyCacheListener,
+		EventBatcher:               batcher,
+		EventDispatcher:            dispatcher,
+		TopologyService:            topologyService,
+		InformerFactory:            factory,
 	}
 
 	app.setRoutes()
@@ -196,12 +199,16 @@ func (app *App) Start() {
 		return nil
 	})
 
+	g.Go(func() error {
+		app.TrivyVulnerabilityObserver.Start(gCtx)
+		return nil
+	})
+
 	log.Println("Starting Shared Informer Factory...")
 	app.InformerFactory.Start(ctx.Done())
 
 	log.Println("Waiting for cache sync...")
 	results := app.InformerFactory.WaitForCacheSync(ctx.Done())
-
 	for resType, synced := range results {
 		if !synced {
 			log.Fatalf("failed to sync cache for resource: %v", resType)

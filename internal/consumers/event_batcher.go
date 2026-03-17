@@ -134,7 +134,7 @@ func (b *EventBatcher) flush(ctx context.Context) {
 }
 
 func (b *EventBatcher) sendRequest(ctx context.Context, payload []byte) error {
-	req, err := http.NewRequestWithContext(ctx, "POST", b.cfg.ApiURL, bytes.NewBuffer(payload))
+	req, err := http.NewRequestWithContext(ctx, http.MethodPost, b.cfg.ApiURL, bytes.NewBuffer(payload))
 	if err != nil {
 		return fmt.Errorf("failed to create request: %w", err)
 	}

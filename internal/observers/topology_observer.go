@@ -1,4 +1,4 @@
-package producers
+package observers
 
 import (
 	"cluster-agent/internal/events"
@@ -12,7 +12,7 @@ import (
 	"k8s.io/client-go/tools/cache"
 )
 
-type TopologyInvalidator struct {
+type TopologyObserver struct {
 	dispatcher *events.EventDispatcher
 	factory    informers.SharedInformerFactory
 }
@@ -20,8 +20,8 @@ type TopologyInvalidator struct {
 func NewTopologyInvalidator(
 	dispatcher *events.EventDispatcher,
 	factory informers.SharedInformerFactory,
-) *TopologyInvalidator {
-	ti := &TopologyInvalidator{
+) *TopologyObserver {
+	ti := &TopologyObserver{
 		dispatcher: dispatcher,
 		factory:    factory,
 	}
@@ -31,7 +31,7 @@ func NewTopologyInvalidator(
 	return ti
 }
 
-func (ti *TopologyInvalidator) registerHandlers() {
+func (ti *TopologyObserver) registerHandlers() {
 	handlers := cache.ResourceEventHandlerFuncs{
 		AddFunc:    ti.handleObject,
 		UpdateFunc: ti.handleUpdate,
@@ -47,7 +47,7 @@ func (ti *TopologyInvalidator) registerHandlers() {
 	ti.factory.Core().V1().PersistentVolumeClaims().Informer().AddEventHandler(handlers)
 }
 
-func (ti *TopologyInvalidator) handleObject(obj interface{}) {
+func (ti *TopologyObserver) handleObject(obj interface{}) {
 	var namespace string
 
 	switch o := obj.(type) {
@@ -75,11 +75,11 @@ func (ti *TopologyInvalidator) handleObject(obj interface{}) {
 	if namespace != "" {
 		err := ti.dispatcher.Dispatch(context.Background(), &events.ClusterChangedEvent{Namespace: namespace})
 		if err != nil {
-			log.Printf("[TopologyInvalidator] error during dispatch: %v", err)
+			log.Printf("[TopologyObserver] error during dispatch: %v", err)
 		}
 	}
 }
 
-func (ti *TopologyInvalidator) handleUpdate(oldObj, newObj interface{}) {
+func (ti *TopologyObserver) handleUpdate(oldObj, newObj interface{}) {
 	ti.handleObject(newObj)
 }

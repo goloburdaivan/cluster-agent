@@ -13,12 +13,13 @@ import (
 	"cluster-agent/internal/consumers"
 	"cluster-agent/internal/events"
 	"cluster-agent/internal/k8s"
-	"cluster-agent/internal/producers"
+	"cluster-agent/internal/observers"
 	"cluster-agent/internal/services"
 	"cluster-agent/internal/services/topology"
 	"time"
 
 	"github.com/google/wire"
+	"k8s.io/client-go/dynamic"
 	"k8s.io/client-go/informers"
 	"k8s.io/client-go/kubernetes"
 	corelisters "k8s.io/client-go/listers/core/v1"
@@ -48,6 +49,10 @@ func ProvidePodLister(factory informers.SharedInformerFactory) corelisters.PodLi
 
 func ProvideEventDispatcher() *events.EventDispatcher {
 	return events.NewEventDispatcher(5, 100)
+}
+
+func ProvideDynamicClient(cfg *rest.Config) (dynamic.Interface, error) {
+	return dynamic.NewForConfig(cfg)
 }
 
 func InitializeApp() (*internal.App, func(), error) {
@@ -88,9 +93,11 @@ func InitializeApp() (*internal.App, func(), error) {
 		topology.NewTopologyService,
 
 		consumers.NewEventBatcher,
-		producers.NewEventCollector,
-		producers.NewTopologyInvalidator,
+		observers.NewEventCollector,
+		observers.NewTopologyInvalidator,
+		observers.NewTrivyVulnerabilityObserver,
 		ProvideEventDispatcher,
+		ProvideDynamicClient,
 
 		internal.NewApp,
 	)
