@@ -41,8 +41,16 @@ func NewTopologyService(
 
 			// Storage / config
 			&rules.WorkloadPVCRule{},
-			&rules.DeploymentConfigRule{},
-			&rules.DeploymentSecretRule{},
+			&rules.WorkloadConfigRule{},
+			&rules.WorkloadSecretRule{},
+			&rules.StorageHierarchyRule{},
+
+			// Workload hierarchy
+			&rules.CronJobJobRule{},
+
+			// RBAC
+			&rules.WorkloadServiceAccountRule{},
+			&rules.RBACBindingsRule{},
 		},
 	}
 }

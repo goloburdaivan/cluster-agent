@@ -14,6 +14,9 @@ import (
 type SecretService interface {
 	List(ctx context.Context, namespace string) ([]models.SecretListInfo, error)
 	Get(ctx context.Context, namespace, name string) (*models.SecretDetails, error)
+	Create(ctx context.Context, secret *corev1.Secret) error
+	Update(ctx context.Context, secret *corev1.Secret) error
+	Delete(ctx context.Context, namespace, name string) error
 }
 
 type secretService struct {
@@ -56,6 +59,36 @@ func (s *secretService) Get(ctx context.Context, namespace, name string) (*model
 		Annotations:    item.Annotations,
 		Immutable:      item.Immutable,
 	}, nil
+}
+
+func (s *secretService) Create(ctx context.Context, secret *corev1.Secret) error {
+	_, err := s.clientset.CoreV1().Secrets(secret.Namespace).Create(ctx, secret, metav1.CreateOptions{})
+	if err != nil {
+		return fmt.Errorf("failed to create secret: %w", err)
+	}
+	return nil
+}
+
+func (s *secretService) Update(ctx context.Context, secret *corev1.Secret) error {
+	_, err := s.clientset.CoreV1().Secrets(secret.Namespace).Update(ctx, secret, metav1.UpdateOptions{})
+	if err != nil {
+		if k8serrors.IsNotFound(err) {
+			return ErrNotFound
+		}
+		return fmt.Errorf("failed to update secret: %w", err)
+	}
+	return nil
+}
+
+func (s *secretService) Delete(ctx context.Context, namespace, name string) error {
+	err := s.clientset.CoreV1().Secrets(namespace).Delete(ctx, name, metav1.DeleteOptions{})
+	if err != nil {
+		if k8serrors.IsNotFound(err) {
+			return ErrNotFound
+		}
+		return fmt.Errorf("failed to delete secret: %w", err)
+	}
+	return nil
 }
 
 func (s *secretService) mapToListInfo(item *corev1.Secret) models.SecretListInfo {

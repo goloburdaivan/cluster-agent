@@ -17,6 +17,16 @@ var HandlerSet = wire.NewSet(
 	NewIngressHandler,
 	NewPvcHandler,
 	NewNetworkInspectorHandler,
+	NewDaemonSetHandler,
+	NewJobHandler,
+	NewCronJobHandler,
+	NewPVHandler,
+	NewStorageClassHandler,
+	NewNetworkPolicyHandler,
+	NewServiceAccountHandler,
+	NewRoleHandler,
+	NewRoleBindingHandler,
+	NewMetricsHandler,
 )
 
 type HandlerContainer struct {
@@ -33,6 +43,16 @@ type HandlerContainer struct {
 	Ingresses        *IngressHandler
 	Pvcs             *PvcHandler
 	NetworkInspector *NetworkInspectorHandler
+	DaemonSet        *DaemonSetHandler
+	Job              *JobHandler
+	CronJob          *CronJobHandler
+	PV               *PVHandler
+	StorageClass     *StorageClassHandler
+	NetworkPolicy    *NetworkPolicyHandler
+	ServiceAccount   *ServiceAccountHandler
+	Role             *RoleHandler
+	RoleBinding      *RoleBindingHandler
+	Metrics          *MetricsHandler
 }
 
 func NewHandlerContainer(
@@ -49,6 +69,16 @@ func NewHandlerContainer(
 	ingresses *IngressHandler,
 	pvcs *PvcHandler,
 	networkInspector *NetworkInspectorHandler,
+	daemonset *DaemonSetHandler,
+	job *JobHandler,
+	cronjob *CronJobHandler,
+	pv *PVHandler,
+	storageclass *StorageClassHandler,
+	networkpolicy *NetworkPolicyHandler,
+	serviceaccount *ServiceAccountHandler,
+	role *RoleHandler,
+	rolebinding *RoleBindingHandler,
+	metrics *MetricsHandler,
 ) *HandlerContainer {
 	return &HandlerContainer{
 		Pod:              pod,
@@ -64,5 +94,15 @@ func NewHandlerContainer(
 		Ingresses:        ingresses,
 		Pvcs:             pvcs,
 		NetworkInspector: networkInspector,
+		DaemonSet:        daemonset,
+		Job:              job,
+		CronJob:          cronjob,
+		PV:               pv,
+		StorageClass:     storageclass,
+		NetworkPolicy:    networkpolicy,
+		ServiceAccount:   serviceaccount,
+		Role:             role,
+		RoleBinding:      rolebinding,
+		Metrics:          metrics,
 	}
 }

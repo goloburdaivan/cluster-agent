@@ -34,7 +34,7 @@ func edge(source, target string) graph.Edge {
 	}
 }
 
-func usedInDeployment(
+func usedInWorkload(
 	podSpec corev1.PodSpec,
 	resourceName string,
 	kind string,

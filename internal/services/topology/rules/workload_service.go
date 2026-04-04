@@ -41,5 +41,33 @@ func (r *WorkloadServiceRule) Apply(
 		}
 	}
 
+	for _, ds := range s.DaemonSets {
+		workloadID := id("DaemonSet", ds.Namespace, ds.Name)
+
+		for _, svc := range s.Services {
+			if svc.Namespace != ds.Namespace {
+				continue
+			}
+
+			if labelsMatch(svc.Spec.Selector, ds.Spec.Template.Labels) {
+				b.AddEdge(edge(workloadID, id("Service", svc.Namespace, svc.Name)))
+			}
+		}
+	}
+
+	for _, j := range s.Jobs {
+		workloadID := id("Job", j.Namespace, j.Name)
+
+		for _, svc := range s.Services {
+			if svc.Namespace != j.Namespace {
+				continue
+			}
+
+			if labelsMatch(svc.Spec.Selector, j.Spec.Template.Labels) {
+				b.AddEdge(edge(workloadID, id("Service", svc.Namespace, svc.Name)))
+			}
+		}
+	}
+
 	return nil
 }

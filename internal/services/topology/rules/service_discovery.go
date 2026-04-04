@@ -30,10 +30,67 @@ func (r *ServiceDiscoveryRule) Apply(
 
 				for svcName, svcID := range servicesMap {
 					if strings.Contains(envValue, svcName) {
-						b.AddEdge(graph.Edge{
-							Source: deployNodeID,
-							Target: svcID,
-						})
+						b.AddEdge(edge(deployNodeID, svcID))
+					}
+				}
+			}
+		}
+	}
+
+	for _, ss := range s.StatefulSets {
+		ssNodeID := id("StatefulSet", ss.Namespace, ss.Name)
+
+		for _, container := range ss.Spec.Template.Spec.Containers {
+			for _, env := range container.Env {
+				envValue := strings.TrimSpace(env.Value)
+
+				if len(envValue) < 3 {
+					continue
+				}
+
+				for svcName, svcID := range servicesMap {
+					if strings.Contains(envValue, svcName) {
+						b.AddEdge(edge(ssNodeID, svcID))
+					}
+				}
+			}
+		}
+	}
+
+	for _, ds := range s.DaemonSets {
+		dsNodeID := id("DaemonSet", ds.Namespace, ds.Name)
+
+		for _, container := range ds.Spec.Template.Spec.Containers {
+			for _, env := range container.Env {
+				envValue := strings.TrimSpace(env.Value)
+
+				if len(envValue) < 3 {
+					continue
+				}
+
+				for svcName, svcID := range servicesMap {
+					if strings.Contains(envValue, svcName) {
+						b.AddEdge(edge(dsNodeID, svcID))
+					}
+				}
+			}
+		}
+	}
+
+	for _, j := range s.Jobs {
+		jNodeID := id("Job", j.Namespace, j.Name)
+
+		for _, container := range j.Spec.Template.Spec.Containers {
+			for _, env := range container.Env {
+				envValue := strings.TrimSpace(env.Value)
+
+				if len(envValue) < 3 {
+					continue
+				}
+
+				for svcName, svcID := range servicesMap {
+					if strings.Contains(envValue, svcName) {
+						b.AddEdge(edge(jNodeID, svcID))
 					}
 				}
 			}

@@ -14,6 +14,9 @@ import (
 type PodService interface {
 	GetPods(ctx context.Context, namespace string) ([]models.PodListInfo, error)
 	GetPod(ctx context.Context, namespace, name string) (*models.PodDetails, error)
+	CreatePod(ctx context.Context, pod *corev1.Pod) error
+	UpdatePod(ctx context.Context, pod *corev1.Pod) error
+	DeletePod(ctx context.Context, namespace, name string) error
 }
 
 type podService struct {
@@ -70,6 +73,36 @@ func (p *podService) GetPod(ctx context.Context, namespace, name string) (*model
 	}
 
 	return p.mapToDetails(rawPod), nil
+}
+
+func (p *podService) CreatePod(ctx context.Context, pod *corev1.Pod) error {
+	_, err := p.clientset.CoreV1().Pods(pod.Namespace).Create(ctx, pod, metav1.CreateOptions{})
+	if err != nil {
+		return fmt.Errorf("failed to create pod: %w", err)
+	}
+	return nil
+}
+
+func (p *podService) UpdatePod(ctx context.Context, pod *corev1.Pod) error {
+	_, err := p.clientset.CoreV1().Pods(pod.Namespace).Update(ctx, pod, metav1.UpdateOptions{})
+	if err != nil {
+		if k8serrors.IsNotFound(err) {
+			return ErrNotFound
+		}
+		return fmt.Errorf("failed to update pod: %w", err)
+	}
+	return nil
+}
+
+func (p *podService) DeletePod(ctx context.Context, namespace, name string) error {
+	err := p.clientset.CoreV1().Pods(namespace).Delete(ctx, name, metav1.DeleteOptions{})
+	if err != nil {
+		if k8serrors.IsNotFound(err) {
+			return ErrNotFound
+		}
+		return fmt.Errorf("failed to delete pod: %w", err)
+	}
+	return nil
 }
 
 func (p *podService) mapToDetails(pod *corev1.Pod) *models.PodDetails {

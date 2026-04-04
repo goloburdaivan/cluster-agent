@@ -13,6 +13,19 @@ func (r *WorkloadPVCRule) Apply(
 	b *graph.Builder,
 ) error {
 
+	for _, d := range s.Deployments {
+		dID := id("Deployment", d.Namespace, d.Name)
+
+		for _, v := range d.Spec.Template.Spec.Volumes {
+			if v.PersistentVolumeClaim != nil {
+				b.AddEdge(edge(
+					dID,
+					id("PVC", d.Namespace, v.PersistentVolumeClaim.ClaimName),
+				))
+			}
+		}
+	}
+
 	for _, ss := range s.StatefulSets {
 		ssID := id("StatefulSet", ss.Namespace, ss.Name)
 
@@ -21,6 +34,32 @@ func (r *WorkloadPVCRule) Apply(
 				b.AddEdge(edge(
 					ssID,
 					id("PVC", ss.Namespace, v.PersistentVolumeClaim.ClaimName),
+				))
+			}
+		}
+	}
+
+	for _, ds := range s.DaemonSets {
+		dsID := id("DaemonSet", ds.Namespace, ds.Name)
+
+		for _, v := range ds.Spec.Template.Spec.Volumes {
+			if v.PersistentVolumeClaim != nil {
+				b.AddEdge(edge(
+					dsID,
+					id("PVC", ds.Namespace, v.PersistentVolumeClaim.ClaimName),
+				))
+			}
+		}
+	}
+
+	for _, j := range s.Jobs {
+		jID := id("Job", j.Namespace, j.Name)
+
+		for _, v := range j.Spec.Template.Spec.Volumes {
+			if v.PersistentVolumeClaim != nil {
+				b.AddEdge(edge(
+					jID,
+					id("PVC", j.Namespace, v.PersistentVolumeClaim.ClaimName),
 				))
 			}
 		}

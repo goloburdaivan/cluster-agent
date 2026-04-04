@@ -5,6 +5,7 @@ import (
 	"context"
 	"fmt"
 
+	networkingv1 "k8s.io/api/networking/v1"
 	k8serrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/kubernetes"
@@ -13,6 +14,9 @@ import (
 type IngressService interface {
 	List(ctx context.Context, namespace string) ([]models.IngressListInfo, error)
 	Get(ctx context.Context, namespace, name string) (*models.IngressDetails, error)
+	Create(ctx context.Context, ingress *networkingv1.Ingress) error
+	Update(ctx context.Context, ingress *networkingv1.Ingress) error
+	Delete(ctx context.Context, namespace, name string) error
 }
 
 type ingressService struct{ clientset kubernetes.Interface }
@@ -72,4 +76,34 @@ func (s *ingressService) Get(ctx context.Context, namespace, name string) (*mode
 		IngressListInfo: models.IngressListInfo{Name: item.Name, Namespace: item.Namespace, LoadBalancer: lb, Rules: rules, Age: item.CreationTimestamp.Time},
 		Spec:            item.Spec, UID: string(item.UID),
 	}, nil
+}
+
+func (s *ingressService) Create(ctx context.Context, ingress *networkingv1.Ingress) error {
+	_, err := s.clientset.NetworkingV1().Ingresses(ingress.Namespace).Create(ctx, ingress, metav1.CreateOptions{})
+	if err != nil {
+		return fmt.Errorf("failed to create ingress: %w", err)
+	}
+	return nil
+}
+
+func (s *ingressService) Update(ctx context.Context, ingress *networkingv1.Ingress) error {
+	_, err := s.clientset.NetworkingV1().Ingresses(ingress.Namespace).Update(ctx, ingress, metav1.UpdateOptions{})
+	if err != nil {
+		if k8serrors.IsNotFound(err) {
+			return ErrNotFound
+		}
+		return fmt.Errorf("failed to update ingress: %w", err)
+	}
+	return nil
+}
+
+func (s *ingressService) Delete(ctx context.Context, namespace, name string) error {
+	err := s.clientset.NetworkingV1().Ingresses(namespace).Delete(ctx, name, metav1.DeleteOptions{})
+	if err != nil {
+		if k8serrors.IsNotFound(err) {
+			return ErrNotFound
+		}
+		return fmt.Errorf("failed to delete ingress: %w", err)
+	}
+	return nil
 }

@@ -5,6 +5,7 @@ import (
 	"context"
 	"fmt"
 
+	corev1 "k8s.io/api/core/v1"
 	k8serrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/kubernetes"
@@ -13,6 +14,9 @@ import (
 type KubernetesServiceService interface {
 	List(ctx context.Context, namespace string) ([]models.ServiceInfo, error)
 	Get(ctx context.Context, namespace, name string) (*models.ServiceDetails, error)
+	Create(ctx context.Context, svc *corev1.Service) error
+	Update(ctx context.Context, svc *corev1.Service) error
+	Delete(ctx context.Context, namespace, name string) error
 }
 
 type service struct {
@@ -88,4 +92,34 @@ func (s *service) Get(ctx context.Context, namespace, name string) (*models.Serv
 		UID:         string(svc.UID),
 		Age:         svc.CreationTimestamp.Time,
 	}, nil
+}
+
+func (s *service) Create(ctx context.Context, svc *corev1.Service) error {
+	_, err := s.clientset.CoreV1().Services(svc.Namespace).Create(ctx, svc, metav1.CreateOptions{})
+	if err != nil {
+		return fmt.Errorf("failed to create service: %w", err)
+	}
+	return nil
+}
+
+func (s *service) Update(ctx context.Context, svc *corev1.Service) error {
+	_, err := s.clientset.CoreV1().Services(svc.Namespace).Update(ctx, svc, metav1.UpdateOptions{})
+	if err != nil {
+		if k8serrors.IsNotFound(err) {
+			return ErrNotFound
+		}
+		return fmt.Errorf("failed to update service: %w", err)
+	}
+	return nil
+}
+
+func (s *service) Delete(ctx context.Context, namespace, name string) error {
+	err := s.clientset.CoreV1().Services(namespace).Delete(ctx, name, metav1.DeleteOptions{})
+	if err != nil {
+		if k8serrors.IsNotFound(err) {
+			return ErrNotFound
+		}
+		return fmt.Errorf("failed to delete service: %w", err)
+	}
+	return nil
 }

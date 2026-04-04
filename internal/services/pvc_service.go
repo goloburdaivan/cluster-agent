@@ -16,6 +16,9 @@ import (
 type PVCService interface {
 	List(ctx context.Context, namespace string) ([]models.PVCListInfo, error)
 	Get(ctx context.Context, namespace, name string) (*models.PVCDetails, error)
+	Create(ctx context.Context, pvc *corev1.PersistentVolumeClaim) error
+	Update(ctx context.Context, pvc *corev1.PersistentVolumeClaim) error
+	Delete(ctx context.Context, namespace, name string) error
 }
 
 type pvcService struct {
@@ -85,6 +88,36 @@ func (s *pvcService) mapToListInfo(item *corev1.PersistentVolumeClaim) models.PV
 		Capacity:  capacity,
 		Age:       item.CreationTimestamp.Time,
 	}
+}
+
+func (s *pvcService) Create(ctx context.Context, pvc *corev1.PersistentVolumeClaim) error {
+	_, err := s.clientset.CoreV1().PersistentVolumeClaims(pvc.Namespace).Create(ctx, pvc, metav1.CreateOptions{})
+	if err != nil {
+		return fmt.Errorf("failed to create pvc: %w", err)
+	}
+	return nil
+}
+
+func (s *pvcService) Update(ctx context.Context, pvc *corev1.PersistentVolumeClaim) error {
+	_, err := s.clientset.CoreV1().PersistentVolumeClaims(pvc.Namespace).Update(ctx, pvc, metav1.UpdateOptions{})
+	if err != nil {
+		if k8serrors.IsNotFound(err) {
+			return ErrNotFound
+		}
+		return fmt.Errorf("failed to update pvc: %w", err)
+	}
+	return nil
+}
+
+func (s *pvcService) Delete(ctx context.Context, namespace, name string) error {
+	err := s.clientset.CoreV1().PersistentVolumeClaims(namespace).Delete(ctx, name, metav1.DeleteOptions{})
+	if err != nil {
+		if k8serrors.IsNotFound(err) {
+			return ErrNotFound
+		}
+		return fmt.Errorf("failed to delete pvc: %w", err)
+	}
+	return nil
 }
 
 func (s *pvcService) getMountedPods(namespace string, claimName string) ([]string, error) {

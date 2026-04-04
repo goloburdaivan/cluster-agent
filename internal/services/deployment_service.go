@@ -16,6 +16,7 @@ type DeploymentService interface {
 	GetDeployments(ctx context.Context, namespace string) ([]models.DeploymentInfo, error)
 	GetDeployment(ctx context.Context, namespace string, deploymentName string) (*v1.Deployment, error)
 	CreateDeployment(ctx context.Context, deployment *v1.Deployment) error
+	UpdateDeployment(ctx context.Context, deployment *v1.Deployment) error
 	DeleteDeployment(ctx context.Context, namespace string, deploymentName string) error
 	ScaleDeployment(ctx context.Context, params models.ScaleDeploymentParams) error
 }
@@ -75,6 +76,19 @@ func (d *deploymentService) CreateDeployment(ctx context.Context, deployment *v1
 
 	if err != nil {
 		return fmt.Errorf("failed to create deployment: %w", err)
+	}
+
+	return nil
+}
+
+func (d *deploymentService) UpdateDeployment(ctx context.Context, deployment *v1.Deployment) error {
+	_, err := d.clientset.AppsV1().Deployments(deployment.Namespace).Update(ctx, deployment, metav1.UpdateOptions{})
+
+	if err != nil {
+		if k8serrors.IsNotFound(err) {
+			return ErrNotFound
+		}
+		return fmt.Errorf("failed to update deployment: %w", err)
 	}
 
 	return nil

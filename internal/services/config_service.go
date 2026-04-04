@@ -14,6 +14,9 @@ import (
 type ConfigMapService interface {
 	List(ctx context.Context, namespace string) ([]models.ConfigMapListInfo, error)
 	Get(ctx context.Context, namespace, name string) (*models.ConfigMapDetails, error)
+	Create(ctx context.Context, configMap *corev1.ConfigMap) error
+	Update(ctx context.Context, configMap *corev1.ConfigMap) error
+	Delete(ctx context.Context, namespace, name string) error
 }
 
 type configMapService struct {
@@ -56,6 +59,36 @@ func (s *configMapService) Get(ctx context.Context, namespace, name string) (*mo
 		Immutable:         item.Immutable,
 		UID:               string(item.UID),
 	}, nil
+}
+
+func (s *configMapService) Create(ctx context.Context, configMap *corev1.ConfigMap) error {
+	_, err := s.clientset.CoreV1().ConfigMaps(configMap.Namespace).Create(ctx, configMap, metav1.CreateOptions{})
+	if err != nil {
+		return fmt.Errorf("failed to create configmap: %w", err)
+	}
+	return nil
+}
+
+func (s *configMapService) Update(ctx context.Context, configMap *corev1.ConfigMap) error {
+	_, err := s.clientset.CoreV1().ConfigMaps(configMap.Namespace).Update(ctx, configMap, metav1.UpdateOptions{})
+	if err != nil {
+		if k8serrors.IsNotFound(err) {
+			return ErrNotFound
+		}
+		return fmt.Errorf("failed to update configmap: %w", err)
+	}
+	return nil
+}
+
+func (s *configMapService) Delete(ctx context.Context, namespace, name string) error {
+	err := s.clientset.CoreV1().ConfigMaps(namespace).Delete(ctx, name, metav1.DeleteOptions{})
+	if err != nil {
+		if k8serrors.IsNotFound(err) {
+			return ErrNotFound
+		}
+		return fmt.Errorf("failed to delete configmap: %w", err)
+	}
+	return nil
 }
 
 func (s *configMapService) mapToListInfo(item *corev1.ConfigMap) models.ConfigMapListInfo {

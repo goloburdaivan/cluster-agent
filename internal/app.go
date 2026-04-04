@@ -27,17 +27,16 @@ import (
 )
 
 type App struct {
-	Router                     *gin.Engine
-	Handlers                   *handlers.HandlerContainer
-	EventCollector             *observers.EventsObserver
-	TopologyInvalidator        *observers.TopologyObserver
-	TrivyVulnerabilityObserver *observers.TrivyVulnerabilityObserver
-	TopologyCacheListener      *listeners.TopologyCacheListener
-	EventBatcher               *consumers.EventBatcher
-	EventDispatcher            *events.EventDispatcher
-	TopologyService            topology.Service
-	InformerFactory            informers.SharedInformerFactory
-	authorizedMiddleware       *middleware.AuthorizedMiddleware
+	Router                *gin.Engine
+	Handlers              *handlers.HandlerContainer
+	EventCollector        *observers.EventsObserver
+	TopologyInvalidator   *observers.TopologyObserver
+	TopologyCacheListener *listeners.TopologyCacheListener
+	EventBatcher          *consumers.EventBatcher
+	EventDispatcher       *events.EventDispatcher
+	TopologyService       topology.Service
+	InformerFactory       informers.SharedInformerFactory
+	authorizedMiddleware  *middleware.AuthorizedMiddleware
 }
 
 func NewApp(
@@ -45,7 +44,6 @@ func NewApp(
 	authorizedMiddleware *middleware.AuthorizedMiddleware,
 	collector *observers.EventsObserver,
 	invalidator *observers.TopologyObserver,
-	trivyObserver *observers.TrivyVulnerabilityObserver,
 	topologyCacheListener *listeners.TopologyCacheListener,
 	batcher *consumers.EventBatcher,
 	dispatcher *events.EventDispatcher,
@@ -53,17 +51,16 @@ func NewApp(
 	factory informers.SharedInformerFactory,
 ) *App {
 	app := &App{
-		Router:                     gin.Default(),
-		Handlers:                   h,
-		authorizedMiddleware:       authorizedMiddleware,
-		EventCollector:             collector,
-		TopologyInvalidator:        invalidator,
-		TrivyVulnerabilityObserver: trivyObserver,
-		TopologyCacheListener:      topologyCacheListener,
-		EventBatcher:               batcher,
-		EventDispatcher:            dispatcher,
-		TopologyService:            topologyService,
-		InformerFactory:            factory,
+		Router:                gin.Default(),
+		Handlers:              h,
+		authorizedMiddleware:  authorizedMiddleware,
+		EventCollector:        collector,
+		TopologyInvalidator:   invalidator,
+		TopologyCacheListener: topologyCacheListener,
+		EventBatcher:          batcher,
+		EventDispatcher:       dispatcher,
+		TopologyService:       topologyService,
+		InformerFactory:       factory,
 	}
 
 	app.setRoutes()
@@ -89,6 +86,18 @@ func (app *App) setRoutes() {
 			pods.GET("/:namespace/:name",
 				app.authorizedMiddleware.HasPermission(permissions.PodsView),
 				app.Handlers.Pod.Get,
+			)
+			pods.POST("",
+				app.authorizedMiddleware.HasPermission(permissions.PodsCreate),
+				app.Handlers.Pod.Create,
+			)
+			pods.PUT("",
+				app.authorizedMiddleware.HasPermission(permissions.PodsCreate),
+				app.Handlers.Pod.Update,
+			)
+			pods.DELETE("/:namespace/:name",
+				app.authorizedMiddleware.HasPermission(permissions.PodsDelete),
+				app.Handlers.Pod.Delete,
 			)
 
 			pods.GET("/:namespace/:name/logs",
@@ -122,6 +131,11 @@ func (app *App) setRoutes() {
 				app.Handlers.Deployment.Create,
 			)
 
+			deployments.PUT("",
+				app.authorizedMiddleware.HasPermission(permissions.DeploymentsCreate),
+				app.Handlers.Deployment.Update,
+			)
+
 			deployments.DELETE("/:namespace/:name",
 				app.authorizedMiddleware.HasPermission(permissions.DeploymentsDelete),
 				app.Handlers.Deployment.Delete,
@@ -133,56 +147,390 @@ func (app *App) setRoutes() {
 			)
 		}
 
-		services := v1.Group("/services")
-		services.Use(app.authorizedMiddleware.HasPermission(permissions.ServicesView))
+		daemonsets := v1.Group("/daemonsets")
 		{
-			services.GET("", app.Handlers.Service.List)
-			services.GET("/:namespace/:name", app.Handlers.Service.Get)
+			daemonsets.GET("",
+				app.authorizedMiddleware.HasPermission(permissions.DeploymentsView),
+				app.Handlers.DaemonSet.List,
+			)
+
+			daemonsets.GET("/:namespace/:name",
+				app.authorizedMiddleware.HasPermission(permissions.DeploymentsView),
+				app.Handlers.DaemonSet.Get,
+			)
+
+			daemonsets.POST("",
+				app.authorizedMiddleware.HasPermission(permissions.DeploymentsCreate),
+				app.Handlers.DaemonSet.Create,
+			)
+
+			daemonsets.PUT("",
+				app.authorizedMiddleware.HasPermission(permissions.DeploymentsCreate),
+				app.Handlers.DaemonSet.Update,
+			)
+
+			daemonsets.DELETE("/:namespace/:name",
+				app.authorizedMiddleware.HasPermission(permissions.DeploymentsDelete),
+				app.Handlers.DaemonSet.Delete,
+			)
+		}
+
+		jobs := v1.Group("/jobs")
+		{
+			jobs.GET("",
+				app.authorizedMiddleware.HasPermission(permissions.DeploymentsView),
+				app.Handlers.Job.List,
+			)
+
+			jobs.GET("/:namespace/:name",
+				app.authorizedMiddleware.HasPermission(permissions.DeploymentsView),
+				app.Handlers.Job.Get,
+			)
+
+			jobs.POST("",
+				app.authorizedMiddleware.HasPermission(permissions.DeploymentsCreate),
+				app.Handlers.Job.Create,
+			)
+
+			jobs.PUT("",
+				app.authorizedMiddleware.HasPermission(permissions.DeploymentsCreate),
+				app.Handlers.Job.Update,
+			)
+
+			jobs.DELETE("/:namespace/:name",
+				app.authorizedMiddleware.HasPermission(permissions.DeploymentsDelete),
+				app.Handlers.Job.Delete,
+			)
+		}
+
+		cronjobs := v1.Group("/cronjobs")
+		{
+			cronjobs.GET("",
+				app.authorizedMiddleware.HasPermission(permissions.DeploymentsView),
+				app.Handlers.CronJob.List,
+			)
+
+			cronjobs.GET("/:namespace/:name",
+				app.authorizedMiddleware.HasPermission(permissions.DeploymentsView),
+				app.Handlers.CronJob.Get,
+			)
+
+			cronjobs.POST("",
+				app.authorizedMiddleware.HasPermission(permissions.DeploymentsCreate),
+				app.Handlers.CronJob.Create,
+			)
+
+			cronjobs.PUT("",
+				app.authorizedMiddleware.HasPermission(permissions.DeploymentsCreate),
+				app.Handlers.CronJob.Update,
+			)
+
+			cronjobs.DELETE("/:namespace/:name",
+				app.authorizedMiddleware.HasPermission(permissions.DeploymentsDelete),
+				app.Handlers.CronJob.Delete,
+			)
+		}
+
+		services := v1.Group("/services")
+		{
+			services.GET("",
+				app.authorizedMiddleware.HasPermission(permissions.ServicesView),
+				app.Handlers.Service.List,
+			)
+			services.GET("/:namespace/:name",
+				app.authorizedMiddleware.HasPermission(permissions.ServicesView),
+				app.Handlers.Service.Get,
+			)
+			services.POST("",
+				app.authorizedMiddleware.HasPermission(permissions.ServicesCreate),
+				app.Handlers.Service.Create,
+			)
+			services.PUT("",
+				app.authorizedMiddleware.HasPermission(permissions.ServicesCreate),
+				app.Handlers.Service.Update,
+			)
+			services.DELETE("/:namespace/:name",
+				app.authorizedMiddleware.HasPermission(permissions.ServicesDelete),
+				app.Handlers.Service.Delete,
+			)
 		}
 
 		configmaps := v1.Group("/configmaps")
-		configmaps.Use(app.authorizedMiddleware.HasPermission(permissions.ConfigMapsView))
 		{
-			configmaps.GET("", app.Handlers.ConfigMaps.List)
-			configmaps.GET("/:namespace/:name", app.Handlers.ConfigMaps.Get)
+			configmaps.GET("",
+				app.authorizedMiddleware.HasPermission(permissions.ConfigMapsView),
+				app.Handlers.ConfigMaps.List,
+			)
+			configmaps.GET("/:namespace/:name",
+				app.authorizedMiddleware.HasPermission(permissions.ConfigMapsView),
+				app.Handlers.ConfigMaps.Get,
+			)
+			configmaps.POST("",
+				app.authorizedMiddleware.HasPermission(permissions.ConfigMapsCreate),
+				app.Handlers.ConfigMaps.Create,
+			)
+			configmaps.PUT("",
+				app.authorizedMiddleware.HasPermission(permissions.ConfigMapsCreate),
+				app.Handlers.ConfigMaps.Update,
+			)
+			configmaps.DELETE("/:namespace/:name",
+				app.authorizedMiddleware.HasPermission(permissions.ConfigMapsDelete),
+				app.Handlers.ConfigMaps.Delete,
+			)
 		}
 
 		secrets := v1.Group("/secrets")
-		secrets.Use(app.authorizedMiddleware.HasPermission(permissions.SecretsView))
 		{
-			secrets.GET("", app.Handlers.Secrets.List)
-			secrets.GET("/:namespace/:name", app.Handlers.Secrets.Get)
+			secrets.GET("",
+				app.authorizedMiddleware.HasPermission(permissions.SecretsView),
+				app.Handlers.Secrets.List,
+			)
+			secrets.GET("/:namespace/:name",
+				app.authorizedMiddleware.HasPermission(permissions.SecretsView),
+				app.Handlers.Secrets.Get,
+			)
+			secrets.POST("",
+				app.authorizedMiddleware.HasPermission(permissions.SecretsCreate),
+				app.Handlers.Secrets.Create,
+			)
+			secrets.PUT("",
+				app.authorizedMiddleware.HasPermission(permissions.SecretsCreate),
+				app.Handlers.Secrets.Update,
+			)
+			secrets.DELETE("/:namespace/:name",
+				app.authorizedMiddleware.HasPermission(permissions.SecretsDelete),
+				app.Handlers.Secrets.Delete,
+			)
 		}
 
 		ingresses := v1.Group("/ingresses")
-		ingresses.Use(app.authorizedMiddleware.HasPermission(permissions.IngressesView))
 		{
-			ingresses.GET("", app.Handlers.Ingresses.List)
-			ingresses.GET("/:namespace/:name", app.Handlers.Ingresses.Get)
+			ingresses.GET("",
+				app.authorizedMiddleware.HasPermission(permissions.IngressesView),
+				app.Handlers.Ingresses.List,
+			)
+			ingresses.GET("/:namespace/:name",
+				app.authorizedMiddleware.HasPermission(permissions.IngressesView),
+				app.Handlers.Ingresses.Get,
+			)
+			ingresses.POST("",
+				app.authorizedMiddleware.HasPermission(permissions.IngressesCreate),
+				app.Handlers.Ingresses.Create,
+			)
+			ingresses.PUT("",
+				app.authorizedMiddleware.HasPermission(permissions.IngressesCreate),
+				app.Handlers.Ingresses.Update,
+			)
+			ingresses.DELETE("/:namespace/:name",
+				app.authorizedMiddleware.HasPermission(permissions.IngressesDelete),
+				app.Handlers.Ingresses.Delete,
+			)
 		}
 
 		pvcs := v1.Group("/persistentvolumeclaims")
-		pvcs.Use(app.authorizedMiddleware.HasPermission(permissions.PVCsView))
 		{
-			pvcs.GET("", app.Handlers.Pvcs.List)
-			pvcs.GET("/:namespace/:name", app.Handlers.Pvcs.Get)
+			pvcs.GET("",
+				app.authorizedMiddleware.HasPermission(permissions.PVCsView),
+				app.Handlers.Pvcs.List,
+			)
+			pvcs.GET("/:namespace/:name",
+				app.authorizedMiddleware.HasPermission(permissions.PVCsView),
+				app.Handlers.Pvcs.Get,
+			)
+			pvcs.POST("",
+				app.authorizedMiddleware.HasPermission(permissions.PVCsCreate),
+				app.Handlers.Pvcs.Create,
+			)
+			pvcs.PUT("",
+				app.authorizedMiddleware.HasPermission(permissions.PVCsCreate),
+				app.Handlers.Pvcs.Update,
+			)
+			pvcs.DELETE("/:namespace/:name",
+				app.authorizedMiddleware.HasPermission(permissions.PVCsDelete),
+				app.Handlers.Pvcs.Delete,
+			)
 		}
 
 		namespace := v1.Group("/namespaces")
 		{
 			namespace.GET("", app.Handlers.Namespace.List)
+			namespace.GET("/:name", app.Handlers.Namespace.Get)
+			namespace.POST("",
+				app.authorizedMiddleware.HasPermission(permissions.NamespacesCreate),
+				app.Handlers.Namespace.Create,
+			)
+			namespace.DELETE("/:name",
+				app.authorizedMiddleware.HasPermission(permissions.NamespacesDelete),
+				app.Handlers.Namespace.Delete,
+			)
 		}
 
 		node := v1.Group("/nodes")
-		node.Use(app.authorizedMiddleware.HasPermission(permissions.NodesView))
 		{
-			node.GET("", app.Handlers.Node.List)
+			node.GET("",
+				app.authorizedMiddleware.HasPermission(permissions.NodesView),
+				app.Handlers.Node.List,
+			)
+			node.GET("/:name",
+				app.authorizedMiddleware.HasPermission(permissions.NodesView),
+				app.Handlers.Node.Get,
+			)
+		}
+
+		pvs := v1.Group("/persistentvolumes")
+		{
+			pvs.GET("",
+				app.authorizedMiddleware.HasPermission(permissions.PVCsView),
+				app.Handlers.PV.List,
+			)
+			pvs.GET("/:name",
+				app.authorizedMiddleware.HasPermission(permissions.PVCsView),
+				app.Handlers.PV.Get,
+			)
+			pvs.POST("",
+				app.authorizedMiddleware.HasPermission(permissions.PVCsCreate),
+				app.Handlers.PV.Create,
+			)
+			pvs.PUT("",
+				app.authorizedMiddleware.HasPermission(permissions.PVCsCreate),
+				app.Handlers.PV.Update,
+			)
+			pvs.DELETE("/:name",
+				app.authorizedMiddleware.HasPermission(permissions.PVCsDelete),
+				app.Handlers.PV.Delete,
+			)
+		}
+
+		storageclasses := v1.Group("/storageclasses")
+		{
+			storageclasses.GET("",
+				app.authorizedMiddleware.HasPermission(permissions.PVCsView),
+				app.Handlers.StorageClass.List,
+			)
+			storageclasses.GET("/:name",
+				app.authorizedMiddleware.HasPermission(permissions.PVCsView),
+				app.Handlers.StorageClass.Get,
+			)
+			storageclasses.POST("",
+				app.authorizedMiddleware.HasPermission(permissions.PVCsCreate),
+				app.Handlers.StorageClass.Create,
+			)
+			storageclasses.PUT("",
+				app.authorizedMiddleware.HasPermission(permissions.PVCsCreate),
+				app.Handlers.StorageClass.Update,
+			)
+			storageclasses.DELETE("/:name",
+				app.authorizedMiddleware.HasPermission(permissions.PVCsDelete),
+				app.Handlers.StorageClass.Delete,
+			)
+		}
+
+		networkpolicies := v1.Group("/networkpolicies")
+		{
+			networkpolicies.GET("",
+				app.authorizedMiddleware.HasPermission(permissions.ServicesView),
+				app.Handlers.NetworkPolicy.List,
+			)
+			networkpolicies.GET("/:namespace/:name",
+				app.authorizedMiddleware.HasPermission(permissions.ServicesView),
+				app.Handlers.NetworkPolicy.Get,
+			)
+			networkpolicies.POST("",
+				app.authorizedMiddleware.HasPermission(permissions.ServicesCreate),
+				app.Handlers.NetworkPolicy.Create,
+			)
+			networkpolicies.PUT("",
+				app.authorizedMiddleware.HasPermission(permissions.ServicesCreate),
+				app.Handlers.NetworkPolicy.Update,
+			)
+			networkpolicies.DELETE("/:namespace/:name",
+				app.authorizedMiddleware.HasPermission(permissions.ServicesDelete),
+				app.Handlers.NetworkPolicy.Delete,
+			)
+		}
+
+		serviceaccounts := v1.Group("/serviceaccounts")
+		{
+			serviceaccounts.GET("",
+				app.authorizedMiddleware.HasPermission(permissions.SecretsView),
+				app.Handlers.ServiceAccount.List,
+			)
+			serviceaccounts.GET("/:namespace/:name",
+				app.authorizedMiddleware.HasPermission(permissions.SecretsView),
+				app.Handlers.ServiceAccount.Get,
+			)
+			serviceaccounts.POST("",
+				app.authorizedMiddleware.HasPermission(permissions.SecretsCreate),
+				app.Handlers.ServiceAccount.Create,
+			)
+			serviceaccounts.PUT("",
+				app.authorizedMiddleware.HasPermission(permissions.SecretsCreate),
+				app.Handlers.ServiceAccount.Update,
+			)
+			serviceaccounts.DELETE("/:namespace/:name",
+				app.authorizedMiddleware.HasPermission(permissions.SecretsDelete),
+				app.Handlers.ServiceAccount.Delete,
+			)
+		}
+
+		roles := v1.Group("/roles")
+		{
+			roles.GET("",
+				app.authorizedMiddleware.HasPermission(permissions.SecretsView),
+				app.Handlers.Role.List,
+			)
+			roles.GET("/:namespace/:name",
+				app.authorizedMiddleware.HasPermission(permissions.SecretsView),
+				app.Handlers.Role.Get,
+			)
+			roles.POST("",
+				app.authorizedMiddleware.HasPermission(permissions.SecretsCreate),
+				app.Handlers.Role.Create,
+			)
+			roles.PUT("",
+				app.authorizedMiddleware.HasPermission(permissions.SecretsCreate),
+				app.Handlers.Role.Update,
+			)
+			roles.DELETE("/:namespace/:name",
+				app.authorizedMiddleware.HasPermission(permissions.SecretsDelete),
+				app.Handlers.Role.Delete,
+			)
+		}
+
+		rolebindings := v1.Group("/rolebindings")
+		{
+			rolebindings.GET("",
+				app.authorizedMiddleware.HasPermission(permissions.SecretsView),
+				app.Handlers.RoleBinding.List,
+			)
+			rolebindings.GET("/:namespace/:name",
+				app.authorizedMiddleware.HasPermission(permissions.SecretsView),
+				app.Handlers.RoleBinding.Get,
+			)
+			rolebindings.POST("",
+				app.authorizedMiddleware.HasPermission(permissions.SecretsCreate),
+				app.Handlers.RoleBinding.Create,
+			)
+			rolebindings.PUT("",
+				app.authorizedMiddleware.HasPermission(permissions.SecretsCreate),
+				app.Handlers.RoleBinding.Update,
+			)
+			rolebindings.DELETE("/:namespace/:name",
+				app.authorizedMiddleware.HasPermission(permissions.SecretsDelete),
+				app.Handlers.RoleBinding.Delete,
+			)
 		}
 
 		topology := v1.Group("/topology")
 		topology.Use(app.authorizedMiddleware.HasPermission(permissions.TopologyView))
 		{
 			topology.GET("", app.Handlers.Topology.Get)
+		}
+
+		metrics := v1.Group("/metrics/stream")
+		{
+			metrics.GET("/nodes/:id", app.Handlers.Metrics.GetNodeMetrics)
+			metrics.GET("/pods/:namespace/:id", app.Handlers.Metrics.GetPodMetrics)
 		}
 	}
 }
@@ -196,11 +544,6 @@ func (app *App) Start() {
 	g.Go(func() error {
 		log.Println("Starting Event Batcher...")
 		app.EventBatcher.Run(gCtx)
-		return nil
-	})
-
-	g.Go(func() error {
-		app.TrivyVulnerabilityObserver.Start(gCtx)
 		return nil
 	})
 

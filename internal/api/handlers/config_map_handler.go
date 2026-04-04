@@ -7,6 +7,7 @@ import (
 	"net/http"
 
 	"github.com/gin-gonic/gin"
+	corev1 "k8s.io/api/core/v1"
 )
 
 type ConfigMapHandler struct{ service services.ConfigMapService }
@@ -37,4 +38,59 @@ func (h *ConfigMapHandler) Get(c *gin.Context) {
 		return
 	}
 	c.JSON(http.StatusOK, responses.Success(data))
+}
+
+func (h *ConfigMapHandler) Create(c *gin.Context) {
+	var configMap corev1.ConfigMap
+
+	if err := c.ShouldBindJSON(&configMap); err != nil {
+		c.JSON(http.StatusBadRequest, responses.Error(err.Error()))
+		return
+	}
+
+	err := h.service.Create(c.Request.Context(), &configMap)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, responses.Error(err.Error()))
+		return
+	}
+
+	c.JSON(http.StatusCreated, responses.Success(configMap))
+}
+
+func (h *ConfigMapHandler) Update(c *gin.Context) {
+	var configMap corev1.ConfigMap
+
+	if err := c.ShouldBindJSON(&configMap); err != nil {
+		c.JSON(http.StatusBadRequest, responses.Error(err.Error()))
+		return
+	}
+
+	err := h.service.Update(c.Request.Context(), &configMap)
+	if err != nil {
+		if errors.Is(err, services.ErrNotFound) {
+			c.JSON(http.StatusNotFound, responses.Error(err.Error()))
+			return
+		}
+		c.JSON(http.StatusInternalServerError, responses.Error(err.Error()))
+		return
+	}
+
+	c.JSON(http.StatusOK, responses.Success(configMap))
+}
+
+func (h *ConfigMapHandler) Delete(c *gin.Context) {
+	namespace := c.Param("namespace")
+	name := c.Param("name")
+
+	err := h.service.Delete(c.Request.Context(), namespace, name)
+	if err != nil {
+		if errors.Is(err, services.ErrNotFound) {
+			c.JSON(http.StatusNotFound, responses.Error(err.Error()))
+			return
+		}
+		c.JSON(http.StatusInternalServerError, responses.Error(err.Error()))
+		return
+	}
+
+	c.JSON(http.StatusOK, responses.Success("OK"))
 }

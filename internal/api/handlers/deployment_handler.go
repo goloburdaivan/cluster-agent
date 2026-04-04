@@ -69,6 +69,27 @@ func (handler *DeploymentHandler) Create(c *gin.Context) {
 	c.JSON(http.StatusCreated, responses.Success(deployment))
 }
 
+func (handler *DeploymentHandler) Update(c *gin.Context) {
+	var deployment v1.Deployment
+
+	if err := c.ShouldBindJSON(&deployment); err != nil {
+		c.JSON(http.StatusBadRequest, responses.Error(err.Error()))
+		return
+	}
+
+	err := handler.deploymentService.UpdateDeployment(c.Request.Context(), &deployment)
+	if err != nil {
+		if errors.Is(err, services.ErrNotFound) {
+			c.JSON(http.StatusNotFound, responses.Error(err.Error()))
+			return
+		}
+		c.JSON(http.StatusInternalServerError, responses.Error(err.Error()))
+		return
+	}
+
+	c.JSON(http.StatusOK, responses.Success(deployment))
+}
+
 func (handler *DeploymentHandler) Delete(c *gin.Context) {
 	namespace := c.Param("namespace")
 	name := c.Param("name")
