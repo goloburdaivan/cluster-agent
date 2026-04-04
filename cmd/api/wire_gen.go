@@ -25,6 +25,7 @@ import (
 	"k8s.io/client-go/listers/core/v1"
 	"k8s.io/client-go/rest"
 	cache2 "k8s.io/client-go/tools/cache"
+	"k8s.io/metrics/pkg/client/clientset/versioned"
 	"time"
 )
 
@@ -72,21 +73,40 @@ func InitializeApp() (*internal.App, func(), error) {
 	pvcHandler := handlers.NewPvcHandler(pvcService)
 	networkInspectorService := services.NewNetworkInspectorService(kubernetesInterface, restConfig)
 	networkInspectorHandler := handlers.NewNetworkInspectorHandler(networkInspectorService)
-	handlerContainer := handlers.NewHandlerContainer(podHandler, deploymentHandler, namespaceHandler, serviceHandler, nodeHandler, terminalHandler, topologyHandler, podLogsHandler, configMapHandler, secretHandler, ingressHandler, pvcHandler, networkInspectorHandler)
+	daemonSetService := services.NewDaemonSetService(kubernetesInterface)
+	daemonSetHandler := handlers.NewDaemonSetHandler(daemonSetService)
+	jobService := services.NewJobService(kubernetesInterface)
+	jobHandler := handlers.NewJobHandler(jobService)
+	cronJobService := services.NewCronJobService(kubernetesInterface)
+	cronJobHandler := handlers.NewCronJobHandler(cronJobService)
+	pvService := services.NewPVService(kubernetesInterface)
+	pvHandler := handlers.NewPVHandler(pvService)
+	storageClassService := services.NewStorageClassService(kubernetesInterface)
+	storageClassHandler := handlers.NewStorageClassHandler(storageClassService)
+	networkPolicyService := services.NewNetworkPolicyService(kubernetesInterface)
+	networkPolicyHandler := handlers.NewNetworkPolicyHandler(networkPolicyService)
+	serviceAccountService := services.NewServiceAccountService(kubernetesInterface)
+	serviceAccountHandler := handlers.NewServiceAccountHandler(serviceAccountService)
+	roleService := services.NewRoleService(kubernetesInterface)
+	roleHandler := handlers.NewRoleHandler(roleService)
+	roleBindingService := services.NewRoleBindingService(kubernetesInterface)
+	roleBindingHandler := handlers.NewRoleBindingHandler(roleBindingService)
+	versionedInterface, err := ProvideMetricsClient(restConfig)
+	if err != nil {
+		cleanup()
+		return nil, nil, err
+	}
+	metricsService := services.NewMetricsService(versionedInterface, kubernetesInterface)
+	metricsHandler := handlers.NewMetricsHandler(metricsService)
+	handlerContainer := handlers.NewHandlerContainer(podHandler, deploymentHandler, namespaceHandler, serviceHandler, nodeHandler, terminalHandler, topologyHandler, podLogsHandler, configMapHandler, secretHandler, ingressHandler, pvcHandler, networkInspectorHandler, daemonSetHandler, jobHandler, cronJobHandler, pvHandler, storageClassHandler, networkPolicyHandler, serviceAccountHandler, roleHandler, roleBindingHandler, metricsHandler)
 	authorizedMiddleware := middleware.NewAuthorizedMiddleware(configConfig)
 	eventBatcher := consumers.NewEventBatcher(configConfig)
 	sharedIndexInformer := ProvideEventInformer(sharedInformerFactory)
 	eventsObserver := observers.NewEventCollector(eventBatcher, sharedIndexInformer)
 	eventDispatcher := ProvideEventDispatcher()
 	topologyObserver := observers.NewTopologyInvalidator(eventDispatcher, sharedInformerFactory)
-	dynamicInterface, err := ProvideDynamicClient(restConfig)
-	if err != nil {
-		cleanup()
-		return nil, nil, err
-	}
-	trivyVulnerabilityObserver := observers.NewTrivyVulnerabilityObserver(dynamicInterface)
 	topologyCacheListener := listeners.NewTopologyCacheListener(topologyCache)
-	app := internal.NewApp(handlerContainer, authorizedMiddleware, eventsObserver, topologyObserver, trivyVulnerabilityObserver, topologyCacheListener, eventBatcher, eventDispatcher, service, sharedInformerFactory)
+	app := internal.NewApp(handlerContainer, authorizedMiddleware, eventsObserver, topologyObserver, topologyCacheListener, eventBatcher, eventDispatcher, service, sharedInformerFactory)
 	return app, func() {
 		cleanup()
 	}, nil
@@ -120,4 +140,8 @@ func ProvideEventDispatcher() *events.EventDispatcher {
 
 func ProvideDynamicClient(cfg *rest.Config) (dynamic.Interface, error) {
 	return dynamic.NewForConfig(cfg)
+}
+
+func ProvideMetricsClient(cfg *rest.Config) (versioned.Interface, error) {
+	return versioned.NewForConfig(cfg)
 }

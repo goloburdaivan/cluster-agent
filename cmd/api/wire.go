@@ -25,6 +25,7 @@ import (
 	corelisters "k8s.io/client-go/listers/core/v1"
 	"k8s.io/client-go/rest"
 	"k8s.io/client-go/tools/cache"
+	metricsclientset "k8s.io/metrics/pkg/client/clientset/versioned"
 )
 
 func ProvideK8sInterface(client *k8s.Client) kubernetes.Interface {
@@ -55,6 +56,10 @@ func ProvideDynamicClient(cfg *rest.Config) (dynamic.Interface, error) {
 	return dynamic.NewForConfig(cfg)
 }
 
+func ProvideMetricsClient(cfg *rest.Config) (metricsclientset.Interface, error) {
+	return metricsclientset.NewForConfig(cfg)
+}
+
 func InitializeApp() (*internal.App, func(), error) {
 	wire.Build(
 		config.NewConfig,
@@ -65,6 +70,7 @@ func InitializeApp() (*internal.App, func(), error) {
 		ProvidePodLister,
 		ProvideK8sInterface,
 		ProvideRestConfig,
+		ProvideMetricsClient,
 
 		cache2.NewRedisClient,
 		cache2.NewTopologyCache,
@@ -90,14 +96,22 @@ func InitializeApp() (*internal.App, func(), error) {
 		services.NewConfigMapService,
 		services.NewSecretService,
 		services.NewNetworkInspectorService,
+		services.NewDaemonSetService,
+		services.NewJobService,
+		services.NewCronJobService,
+		services.NewPVService,
+		services.NewStorageClassService,
+		services.NewNetworkPolicyService,
+		services.NewServiceAccountService,
+		services.NewRoleService,
+		services.NewRoleBindingService,
+		services.NewMetricsService,
 		topology.NewTopologyService,
 
 		consumers.NewEventBatcher,
 		observers.NewEventCollector,
 		observers.NewTopologyInvalidator,
-		observers.NewTrivyVulnerabilityObserver,
 		ProvideEventDispatcher,
-		ProvideDynamicClient,
 
 		internal.NewApp,
 	)
