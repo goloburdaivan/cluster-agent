@@ -16,6 +16,7 @@ import (
 	"syscall"
 	"time"
 
+	"k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/client-go/informers"
 
 	"cluster-agent/internal/api/handlers"
@@ -87,6 +88,10 @@ func (app *App) setRoutes() {
 				app.authorizedMiddleware.HasPermission(permissions.PodsView),
 				app.Handlers.Pod.Get,
 			)
+			pods.GET("/:namespace/:name/raw",
+				app.authorizedMiddleware.HasPermission(permissions.PodsView),
+				app.Handlers.RawPatch.GetNamespaced(schema.GroupVersionResource{Version: "v1", Resource: "pods"}),
+			)
 			pods.POST("",
 				app.authorizedMiddleware.HasPermission(permissions.PodsCreate),
 				app.Handlers.Pod.Create,
@@ -94,6 +99,10 @@ func (app *App) setRoutes() {
 			pods.PUT("",
 				app.authorizedMiddleware.HasPermission(permissions.PodsCreate),
 				app.Handlers.Pod.Update,
+			)
+			pods.PATCH("/:namespace/:name",
+				app.authorizedMiddleware.HasPermission(permissions.PodsCreate),
+				app.Handlers.RawPatch.PatchNamespaced(schema.GroupVersionResource{Version: "v1", Resource: "pods"}),
 			)
 			pods.DELETE("/:namespace/:name",
 				app.authorizedMiddleware.HasPermission(permissions.PodsDelete),
@@ -125,6 +134,10 @@ func (app *App) setRoutes() {
 				app.authorizedMiddleware.HasPermission(permissions.DeploymentsView),
 				app.Handlers.Deployment.Get,
 			)
+			deployments.GET("/:namespace/:name/raw",
+				app.authorizedMiddleware.HasPermission(permissions.DeploymentsView),
+				app.Handlers.RawPatch.GetNamespaced(schema.GroupVersionResource{Group: "apps", Version: "v1", Resource: "deployments"}),
+			)
 
 			deployments.POST("",
 				app.authorizedMiddleware.HasPermission(permissions.DeploymentsCreate),
@@ -134,6 +147,10 @@ func (app *App) setRoutes() {
 			deployments.PUT("",
 				app.authorizedMiddleware.HasPermission(permissions.DeploymentsCreate),
 				app.Handlers.Deployment.Update,
+			)
+			deployments.PATCH("/:namespace/:name",
+				app.authorizedMiddleware.HasPermission(permissions.DeploymentsCreate),
+				app.Handlers.RawPatch.PatchNamespaced(schema.GroupVersionResource{Group: "apps", Version: "v1", Resource: "deployments"}),
 			)
 
 			deployments.DELETE("/:namespace/:name",
@@ -158,6 +175,10 @@ func (app *App) setRoutes() {
 				app.authorizedMiddleware.HasPermission(permissions.DeploymentsView),
 				app.Handlers.DaemonSet.Get,
 			)
+			daemonsets.GET("/:namespace/:name/raw",
+				app.authorizedMiddleware.HasPermission(permissions.DeploymentsView),
+				app.Handlers.RawPatch.GetNamespaced(schema.GroupVersionResource{Group: "apps", Version: "v1", Resource: "daemonsets"}),
+			)
 
 			daemonsets.POST("",
 				app.authorizedMiddleware.HasPermission(permissions.DeploymentsCreate),
@@ -167,6 +188,10 @@ func (app *App) setRoutes() {
 			daemonsets.PUT("",
 				app.authorizedMiddleware.HasPermission(permissions.DeploymentsCreate),
 				app.Handlers.DaemonSet.Update,
+			)
+			daemonsets.PATCH("/:namespace/:name",
+				app.authorizedMiddleware.HasPermission(permissions.DeploymentsCreate),
+				app.Handlers.RawPatch.PatchNamespaced(schema.GroupVersionResource{Group: "apps", Version: "v1", Resource: "daemonsets"}),
 			)
 
 			daemonsets.DELETE("/:namespace/:name",
@@ -186,6 +211,10 @@ func (app *App) setRoutes() {
 				app.authorizedMiddleware.HasPermission(permissions.DeploymentsView),
 				app.Handlers.Job.Get,
 			)
+			jobs.GET("/:namespace/:name/raw",
+				app.authorizedMiddleware.HasPermission(permissions.DeploymentsView),
+				app.Handlers.RawPatch.GetNamespaced(schema.GroupVersionResource{Group: "batch", Version: "v1", Resource: "jobs"}),
+			)
 
 			jobs.POST("",
 				app.authorizedMiddleware.HasPermission(permissions.DeploymentsCreate),
@@ -195,6 +224,10 @@ func (app *App) setRoutes() {
 			jobs.PUT("",
 				app.authorizedMiddleware.HasPermission(permissions.DeploymentsCreate),
 				app.Handlers.Job.Update,
+			)
+			jobs.PATCH("/:namespace/:name",
+				app.authorizedMiddleware.HasPermission(permissions.DeploymentsCreate),
+				app.Handlers.RawPatch.PatchNamespaced(schema.GroupVersionResource{Group: "batch", Version: "v1", Resource: "jobs"}),
 			)
 
 			jobs.DELETE("/:namespace/:name",
@@ -214,6 +247,10 @@ func (app *App) setRoutes() {
 				app.authorizedMiddleware.HasPermission(permissions.DeploymentsView),
 				app.Handlers.CronJob.Get,
 			)
+			cronjobs.GET("/:namespace/:name/raw",
+				app.authorizedMiddleware.HasPermission(permissions.DeploymentsView),
+				app.Handlers.RawPatch.GetNamespaced(schema.GroupVersionResource{Group: "batch", Version: "v1", Resource: "cronjobs"}),
+			)
 
 			cronjobs.POST("",
 				app.authorizedMiddleware.HasPermission(permissions.DeploymentsCreate),
@@ -223,6 +260,10 @@ func (app *App) setRoutes() {
 			cronjobs.PUT("",
 				app.authorizedMiddleware.HasPermission(permissions.DeploymentsCreate),
 				app.Handlers.CronJob.Update,
+			)
+			cronjobs.PATCH("/:namespace/:name",
+				app.authorizedMiddleware.HasPermission(permissions.DeploymentsCreate),
+				app.Handlers.RawPatch.PatchNamespaced(schema.GroupVersionResource{Group: "batch", Version: "v1", Resource: "cronjobs"}),
 			)
 
 			cronjobs.DELETE("/:namespace/:name",
@@ -241,6 +282,10 @@ func (app *App) setRoutes() {
 				app.authorizedMiddleware.HasPermission(permissions.ServicesView),
 				app.Handlers.Service.Get,
 			)
+			services.GET("/:namespace/:name/raw",
+				app.authorizedMiddleware.HasPermission(permissions.ServicesView),
+				app.Handlers.RawPatch.GetNamespaced(schema.GroupVersionResource{Version: "v1", Resource: "services"}),
+			)
 			services.POST("",
 				app.authorizedMiddleware.HasPermission(permissions.ServicesCreate),
 				app.Handlers.Service.Create,
@@ -248,6 +293,10 @@ func (app *App) setRoutes() {
 			services.PUT("",
 				app.authorizedMiddleware.HasPermission(permissions.ServicesCreate),
 				app.Handlers.Service.Update,
+			)
+			services.PATCH("/:namespace/:name",
+				app.authorizedMiddleware.HasPermission(permissions.ServicesCreate),
+				app.Handlers.RawPatch.PatchNamespaced(schema.GroupVersionResource{Version: "v1", Resource: "services"}),
 			)
 			services.DELETE("/:namespace/:name",
 				app.authorizedMiddleware.HasPermission(permissions.ServicesDelete),
@@ -265,6 +314,10 @@ func (app *App) setRoutes() {
 				app.authorizedMiddleware.HasPermission(permissions.ConfigMapsView),
 				app.Handlers.ConfigMaps.Get,
 			)
+			configmaps.GET("/:namespace/:name/raw",
+				app.authorizedMiddleware.HasPermission(permissions.ConfigMapsView),
+				app.Handlers.RawPatch.GetNamespaced(schema.GroupVersionResource{Version: "v1", Resource: "configmaps"}),
+			)
 			configmaps.POST("",
 				app.authorizedMiddleware.HasPermission(permissions.ConfigMapsCreate),
 				app.Handlers.ConfigMaps.Create,
@@ -272,6 +325,10 @@ func (app *App) setRoutes() {
 			configmaps.PUT("",
 				app.authorizedMiddleware.HasPermission(permissions.ConfigMapsCreate),
 				app.Handlers.ConfigMaps.Update,
+			)
+			configmaps.PATCH("/:namespace/:name",
+				app.authorizedMiddleware.HasPermission(permissions.ConfigMapsCreate),
+				app.Handlers.RawPatch.PatchNamespaced(schema.GroupVersionResource{Version: "v1", Resource: "configmaps"}),
 			)
 			configmaps.DELETE("/:namespace/:name",
 				app.authorizedMiddleware.HasPermission(permissions.ConfigMapsDelete),
@@ -289,6 +346,10 @@ func (app *App) setRoutes() {
 				app.authorizedMiddleware.HasPermission(permissions.SecretsView),
 				app.Handlers.Secrets.Get,
 			)
+			secrets.GET("/:namespace/:name/raw",
+				app.authorizedMiddleware.HasPermission(permissions.SecretsView),
+				app.Handlers.RawPatch.GetNamespaced(schema.GroupVersionResource{Version: "v1", Resource: "secrets"}),
+			)
 			secrets.POST("",
 				app.authorizedMiddleware.HasPermission(permissions.SecretsCreate),
 				app.Handlers.Secrets.Create,
@@ -296,6 +357,10 @@ func (app *App) setRoutes() {
 			secrets.PUT("",
 				app.authorizedMiddleware.HasPermission(permissions.SecretsCreate),
 				app.Handlers.Secrets.Update,
+			)
+			secrets.PATCH("/:namespace/:name",
+				app.authorizedMiddleware.HasPermission(permissions.SecretsCreate),
+				app.Handlers.RawPatch.PatchNamespaced(schema.GroupVersionResource{Version: "v1", Resource: "secrets"}),
 			)
 			secrets.DELETE("/:namespace/:name",
 				app.authorizedMiddleware.HasPermission(permissions.SecretsDelete),
@@ -313,6 +378,10 @@ func (app *App) setRoutes() {
 				app.authorizedMiddleware.HasPermission(permissions.IngressesView),
 				app.Handlers.Ingresses.Get,
 			)
+			ingresses.GET("/:namespace/:name/raw",
+				app.authorizedMiddleware.HasPermission(permissions.IngressesView),
+				app.Handlers.RawPatch.GetNamespaced(schema.GroupVersionResource{Group: "networking.k8s.io", Version: "v1", Resource: "ingresses"}),
+			)
 			ingresses.POST("",
 				app.authorizedMiddleware.HasPermission(permissions.IngressesCreate),
 				app.Handlers.Ingresses.Create,
@@ -320,6 +389,10 @@ func (app *App) setRoutes() {
 			ingresses.PUT("",
 				app.authorizedMiddleware.HasPermission(permissions.IngressesCreate),
 				app.Handlers.Ingresses.Update,
+			)
+			ingresses.PATCH("/:namespace/:name",
+				app.authorizedMiddleware.HasPermission(permissions.IngressesCreate),
+				app.Handlers.RawPatch.PatchNamespaced(schema.GroupVersionResource{Group: "networking.k8s.io", Version: "v1", Resource: "ingresses"}),
 			)
 			ingresses.DELETE("/:namespace/:name",
 				app.authorizedMiddleware.HasPermission(permissions.IngressesDelete),
@@ -337,6 +410,10 @@ func (app *App) setRoutes() {
 				app.authorizedMiddleware.HasPermission(permissions.PVCsView),
 				app.Handlers.Pvcs.Get,
 			)
+			pvcs.GET("/:namespace/:name/raw",
+				app.authorizedMiddleware.HasPermission(permissions.PVCsView),
+				app.Handlers.RawPatch.GetNamespaced(schema.GroupVersionResource{Version: "v1", Resource: "persistentvolumeclaims"}),
+			)
 			pvcs.POST("",
 				app.authorizedMiddleware.HasPermission(permissions.PVCsCreate),
 				app.Handlers.Pvcs.Create,
@@ -344,6 +421,10 @@ func (app *App) setRoutes() {
 			pvcs.PUT("",
 				app.authorizedMiddleware.HasPermission(permissions.PVCsCreate),
 				app.Handlers.Pvcs.Update,
+			)
+			pvcs.PATCH("/:namespace/:name",
+				app.authorizedMiddleware.HasPermission(permissions.PVCsCreate),
+				app.Handlers.RawPatch.PatchNamespaced(schema.GroupVersionResource{Version: "v1", Resource: "persistentvolumeclaims"}),
 			)
 			pvcs.DELETE("/:namespace/:name",
 				app.authorizedMiddleware.HasPermission(permissions.PVCsDelete),
@@ -387,6 +468,10 @@ func (app *App) setRoutes() {
 				app.authorizedMiddleware.HasPermission(permissions.PVCsView),
 				app.Handlers.PV.Get,
 			)
+			pvs.GET("/:name/raw",
+				app.authorizedMiddleware.HasPermission(permissions.PVCsView),
+				app.Handlers.RawPatch.GetClusterScoped(schema.GroupVersionResource{Version: "v1", Resource: "persistentvolumes"}),
+			)
 			pvs.POST("",
 				app.authorizedMiddleware.HasPermission(permissions.PVCsCreate),
 				app.Handlers.PV.Create,
@@ -394,6 +479,10 @@ func (app *App) setRoutes() {
 			pvs.PUT("",
 				app.authorizedMiddleware.HasPermission(permissions.PVCsCreate),
 				app.Handlers.PV.Update,
+			)
+			pvs.PATCH("/:name",
+				app.authorizedMiddleware.HasPermission(permissions.PVCsCreate),
+				app.Handlers.RawPatch.PatchClusterScoped(schema.GroupVersionResource{Version: "v1", Resource: "persistentvolumes"}),
 			)
 			pvs.DELETE("/:name",
 				app.authorizedMiddleware.HasPermission(permissions.PVCsDelete),
@@ -411,6 +500,10 @@ func (app *App) setRoutes() {
 				app.authorizedMiddleware.HasPermission(permissions.PVCsView),
 				app.Handlers.StorageClass.Get,
 			)
+			storageclasses.GET("/:name/raw",
+				app.authorizedMiddleware.HasPermission(permissions.PVCsView),
+				app.Handlers.RawPatch.GetClusterScoped(schema.GroupVersionResource{Group: "storage.k8s.io", Version: "v1", Resource: "storageclasses"}),
+			)
 			storageclasses.POST("",
 				app.authorizedMiddleware.HasPermission(permissions.PVCsCreate),
 				app.Handlers.StorageClass.Create,
@@ -418,6 +511,10 @@ func (app *App) setRoutes() {
 			storageclasses.PUT("",
 				app.authorizedMiddleware.HasPermission(permissions.PVCsCreate),
 				app.Handlers.StorageClass.Update,
+			)
+			storageclasses.PATCH("/:name",
+				app.authorizedMiddleware.HasPermission(permissions.PVCsCreate),
+				app.Handlers.RawPatch.PatchClusterScoped(schema.GroupVersionResource{Group: "storage.k8s.io", Version: "v1", Resource: "storageclasses"}),
 			)
 			storageclasses.DELETE("/:name",
 				app.authorizedMiddleware.HasPermission(permissions.PVCsDelete),
@@ -435,6 +532,10 @@ func (app *App) setRoutes() {
 				app.authorizedMiddleware.HasPermission(permissions.ServicesView),
 				app.Handlers.NetworkPolicy.Get,
 			)
+			networkpolicies.GET("/:namespace/:name/raw",
+				app.authorizedMiddleware.HasPermission(permissions.ServicesView),
+				app.Handlers.RawPatch.GetNamespaced(schema.GroupVersionResource{Group: "networking.k8s.io", Version: "v1", Resource: "networkpolicies"}),
+			)
 			networkpolicies.POST("",
 				app.authorizedMiddleware.HasPermission(permissions.ServicesCreate),
 				app.Handlers.NetworkPolicy.Create,
@@ -442,6 +543,10 @@ func (app *App) setRoutes() {
 			networkpolicies.PUT("",
 				app.authorizedMiddleware.HasPermission(permissions.ServicesCreate),
 				app.Handlers.NetworkPolicy.Update,
+			)
+			networkpolicies.PATCH("/:namespace/:name",
+				app.authorizedMiddleware.HasPermission(permissions.ServicesCreate),
+				app.Handlers.RawPatch.PatchNamespaced(schema.GroupVersionResource{Group: "networking.k8s.io", Version: "v1", Resource: "networkpolicies"}),
 			)
 			networkpolicies.DELETE("/:namespace/:name",
 				app.authorizedMiddleware.HasPermission(permissions.ServicesDelete),
@@ -459,6 +564,10 @@ func (app *App) setRoutes() {
 				app.authorizedMiddleware.HasPermission(permissions.SecretsView),
 				app.Handlers.ServiceAccount.Get,
 			)
+			serviceaccounts.GET("/:namespace/:name/raw",
+				app.authorizedMiddleware.HasPermission(permissions.SecretsView),
+				app.Handlers.RawPatch.GetNamespaced(schema.GroupVersionResource{Version: "v1", Resource: "serviceaccounts"}),
+			)
 			serviceaccounts.POST("",
 				app.authorizedMiddleware.HasPermission(permissions.SecretsCreate),
 				app.Handlers.ServiceAccount.Create,
@@ -466,6 +575,10 @@ func (app *App) setRoutes() {
 			serviceaccounts.PUT("",
 				app.authorizedMiddleware.HasPermission(permissions.SecretsCreate),
 				app.Handlers.ServiceAccount.Update,
+			)
+			serviceaccounts.PATCH("/:namespace/:name",
+				app.authorizedMiddleware.HasPermission(permissions.SecretsCreate),
+				app.Handlers.RawPatch.PatchNamespaced(schema.GroupVersionResource{Version: "v1", Resource: "serviceaccounts"}),
 			)
 			serviceaccounts.DELETE("/:namespace/:name",
 				app.authorizedMiddleware.HasPermission(permissions.SecretsDelete),
@@ -483,6 +596,10 @@ func (app *App) setRoutes() {
 				app.authorizedMiddleware.HasPermission(permissions.SecretsView),
 				app.Handlers.Role.Get,
 			)
+			roles.GET("/:namespace/:name/raw",
+				app.authorizedMiddleware.HasPermission(permissions.SecretsView),
+				app.Handlers.RawPatch.GetNamespaced(schema.GroupVersionResource{Group: "rbac.authorization.k8s.io", Version: "v1", Resource: "roles"}),
+			)
 			roles.POST("",
 				app.authorizedMiddleware.HasPermission(permissions.SecretsCreate),
 				app.Handlers.Role.Create,
@@ -490,6 +607,10 @@ func (app *App) setRoutes() {
 			roles.PUT("",
 				app.authorizedMiddleware.HasPermission(permissions.SecretsCreate),
 				app.Handlers.Role.Update,
+			)
+			roles.PATCH("/:namespace/:name",
+				app.authorizedMiddleware.HasPermission(permissions.SecretsCreate),
+				app.Handlers.RawPatch.PatchNamespaced(schema.GroupVersionResource{Group: "rbac.authorization.k8s.io", Version: "v1", Resource: "roles"}),
 			)
 			roles.DELETE("/:namespace/:name",
 				app.authorizedMiddleware.HasPermission(permissions.SecretsDelete),
@@ -507,6 +628,10 @@ func (app *App) setRoutes() {
 				app.authorizedMiddleware.HasPermission(permissions.SecretsView),
 				app.Handlers.RoleBinding.Get,
 			)
+			rolebindings.GET("/:namespace/:name/raw",
+				app.authorizedMiddleware.HasPermission(permissions.SecretsView),
+				app.Handlers.RawPatch.GetNamespaced(schema.GroupVersionResource{Group: "rbac.authorization.k8s.io", Version: "v1", Resource: "rolebindings"}),
+			)
 			rolebindings.POST("",
 				app.authorizedMiddleware.HasPermission(permissions.SecretsCreate),
 				app.Handlers.RoleBinding.Create,
@@ -514,6 +639,10 @@ func (app *App) setRoutes() {
 			rolebindings.PUT("",
 				app.authorizedMiddleware.HasPermission(permissions.SecretsCreate),
 				app.Handlers.RoleBinding.Update,
+			)
+			rolebindings.PATCH("/:namespace/:name",
+				app.authorizedMiddleware.HasPermission(permissions.SecretsCreate),
+				app.Handlers.RawPatch.PatchNamespaced(schema.GroupVersionResource{Group: "rbac.authorization.k8s.io", Version: "v1", Resource: "rolebindings"}),
 			)
 			rolebindings.DELETE("/:namespace/:name",
 				app.authorizedMiddleware.HasPermission(permissions.SecretsDelete),

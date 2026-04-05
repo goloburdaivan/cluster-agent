@@ -71,6 +71,7 @@ func InitializeApp() (*internal.App, func(), error) {
 		ProvideK8sInterface,
 		ProvideRestConfig,
 		ProvideMetricsClient,
+		ProvideDynamicClient,
 
 		cache2.NewRedisClient,
 		cache2.NewTopologyCache,

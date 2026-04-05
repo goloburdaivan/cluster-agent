@@ -98,7 +98,13 @@ func InitializeApp() (*internal.App, func(), error) {
 	}
 	metricsService := services.NewMetricsService(versionedInterface, kubernetesInterface)
 	metricsHandler := handlers.NewMetricsHandler(metricsService)
-	handlerContainer := handlers.NewHandlerContainer(podHandler, deploymentHandler, namespaceHandler, serviceHandler, nodeHandler, terminalHandler, topologyHandler, podLogsHandler, configMapHandler, secretHandler, ingressHandler, pvcHandler, networkInspectorHandler, daemonSetHandler, jobHandler, cronJobHandler, pvHandler, storageClassHandler, networkPolicyHandler, serviceAccountHandler, roleHandler, roleBindingHandler, metricsHandler)
+	dynamicInterface, err := ProvideDynamicClient(restConfig)
+	if err != nil {
+		cleanup()
+		return nil, nil, err
+	}
+	rawPatchHandler := handlers.NewRawPatchHandler(dynamicInterface)
+	handlerContainer := handlers.NewHandlerContainer(podHandler, deploymentHandler, namespaceHandler, serviceHandler, nodeHandler, terminalHandler, topologyHandler, podLogsHandler, configMapHandler, secretHandler, ingressHandler, pvcHandler, networkInspectorHandler, daemonSetHandler, jobHandler, cronJobHandler, pvHandler, storageClassHandler, networkPolicyHandler, serviceAccountHandler, roleHandler, roleBindingHandler, metricsHandler, rawPatchHandler)
 	authorizedMiddleware := middleware.NewAuthorizedMiddleware(configConfig)
 	eventBatcher := consumers.NewEventBatcher(configConfig)
 	sharedIndexInformer := ProvideEventInformer(sharedInformerFactory)

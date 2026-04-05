@@ -27,6 +27,7 @@ var HandlerSet = wire.NewSet(
 	NewRoleHandler,
 	NewRoleBindingHandler,
 	NewMetricsHandler,
+	NewRawPatchHandler,
 )
 
 type HandlerContainer struct {
@@ -53,6 +54,7 @@ type HandlerContainer struct {
 	Role             *RoleHandler
 	RoleBinding      *RoleBindingHandler
 	Metrics          *MetricsHandler
+	RawPatch         *RawPatchHandler
 }
 
 func NewHandlerContainer(
@@ -79,6 +81,7 @@ func NewHandlerContainer(
 	role *RoleHandler,
 	rolebinding *RoleBindingHandler,
 	metrics *MetricsHandler,
+	rawPatch *RawPatchHandler,
 ) *HandlerContainer {
 	return &HandlerContainer{
 		Pod:              pod,
@@ -104,5 +107,6 @@ func NewHandlerContainer(
 		Role:             role,
 		RoleBinding:      rolebinding,
 		Metrics:          metrics,
+		RawPatch:         rawPatch,
 	}
 }
