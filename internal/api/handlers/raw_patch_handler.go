@@ -56,9 +56,14 @@ func (h *RawPatchHandler) PatchClusterScoped(gvr schema.GroupVersionResource) gi
 		result, err := h.client.Resource(gvr).Patch(
 			c.Request.Context(), name, types.MergePatchType, body, metav1.PatchOptions{},
 		)
+
 		if err != nil {
 			c.JSON(http.StatusUnprocessableEntity, responses.Error(err.Error()))
 			return
+		}
+
+		if metadata, ok := result.Object["metadata"].(map[string]interface{}); ok {
+			delete(metadata, "managedFields")
 		}
 
 		c.JSON(http.StatusOK, responses.Success(result.Object))
@@ -73,9 +78,14 @@ func (h *RawPatchHandler) GetNamespaced(gvr schema.GroupVersionResource) gin.Han
 		result, err := h.client.Resource(gvr).Namespace(namespace).Get(
 			c.Request.Context(), name, metav1.GetOptions{},
 		)
+
 		if err != nil {
 			c.JSON(http.StatusNotFound, responses.Error(err.Error()))
 			return
+		}
+
+		if metadata, ok := result.Object["metadata"].(map[string]interface{}); ok {
+			delete(metadata, "managedFields")
 		}
 
 		c.JSON(http.StatusOK, responses.Success(result.Object))
