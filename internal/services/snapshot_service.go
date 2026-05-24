@@ -15,26 +15,28 @@ type SnapshotService interface {
 }
 
 type snapshotService struct {
-	deploymentLister  appsv1.DeploymentLister
-	serviceLister     corev1.ServiceLister
-	statefulSetLister appsv1.StatefulSetLister
-	ingressLister     v1.IngressLister
-	configMapLister   corev1.ConfigMapLister
-	secretLister      corev1.SecretLister
-	pvcLister         corev1.PersistentVolumeClaimLister
+	deploymentLister    appsv1.DeploymentLister
+	serviceLister       corev1.ServiceLister
+	statefulSetLister   appsv1.StatefulSetLister
+	ingressLister       v1.IngressLister
+	configMapLister     corev1.ConfigMapLister
+	secretLister        corev1.SecretLister
+	pvcLister           corev1.PersistentVolumeClaimLister
+	networkPolicyLister v1.NetworkPolicyLister
 }
 
 func NewSnapshotService(
 	factory informers.SharedInformerFactory,
 ) SnapshotService {
 	return &snapshotService{
-		deploymentLister:  factory.Apps().V1().Deployments().Lister(),
-		serviceLister:     factory.Core().V1().Services().Lister(),
-		statefulSetLister: factory.Apps().V1().StatefulSets().Lister(),
-		ingressLister:     factory.Networking().V1().Ingresses().Lister(),
-		configMapLister:   factory.Core().V1().ConfigMaps().Lister(),
-		secretLister:      factory.Core().V1().Secrets().Lister(),
-		pvcLister:         factory.Core().V1().PersistentVolumeClaims().Lister(),
+		deploymentLister:    factory.Apps().V1().Deployments().Lister(),
+		serviceLister:       factory.Core().V1().Services().Lister(),
+		statefulSetLister:   factory.Apps().V1().StatefulSets().Lister(),
+		ingressLister:       factory.Networking().V1().Ingresses().Lister(),
+		configMapLister:     factory.Core().V1().ConfigMaps().Lister(),
+		secretLister:        factory.Core().V1().Secrets().Lister(),
+		pvcLister:           factory.Core().V1().PersistentVolumeClaims().Lister(),
+		networkPolicyLister: factory.Networking().V1().NetworkPolicies().Lister(),
 	}
 }
 
@@ -76,6 +78,11 @@ func (s snapshotService) TakeClusterSnapshot(namespace string) (*models.ClusterS
 		return nil, fmt.Errorf("failed to list pvcs: %w", err)
 	}
 
+	networkPolicies, err := s.networkPolicyLister.NetworkPolicies(namespace).List(labels.Everything())
+	if err != nil {
+		return nil, fmt.Errorf("failed to list networkPolicies: %w", err)
+	}
+
 	snapshot.Deployments = deployments
 	snapshot.Services = services
 	snapshot.StatefulSets = statefulSets
@@ -84,6 +91,7 @@ func (s snapshotService) TakeClusterSnapshot(namespace string) (*models.ClusterS
 	snapshot.Secrets = secrets
 	snapshot.PVCs = pvcs
 	snapshot.Namespace = namespace
+	snapshot.NetworkPolicies = networkPolicies
 
 	return &snapshot, nil
 }

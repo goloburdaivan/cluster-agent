@@ -45,6 +45,8 @@ func (ti *TopologyObserver) registerHandlers() {
 	ti.factory.Core().V1().ConfigMaps().Informer().AddEventHandler(handlers)
 	ti.factory.Core().V1().Secrets().Informer().AddEventHandler(handlers)
 	ti.factory.Core().V1().PersistentVolumeClaims().Informer().AddEventHandler(handlers)
+	ti.factory.Core().V1().PersistentVolumes().Informer().AddEventHandler(handlers)
+	ti.factory.Networking().V1().NetworkPolicies().Informer().AddEventHandler(handlers)
 }
 
 func (ti *TopologyObserver) handleObject(obj interface{}) {
@@ -64,6 +66,10 @@ func (ti *TopologyObserver) handleObject(obj interface{}) {
 	case *corev1.Secret:
 		namespace = o.Namespace
 	case *corev1.PersistentVolumeClaim:
+		namespace = o.Namespace
+	case *corev1.PersistentVolume:
+		namespace = o.Namespace
+	case *networkingv1.NetworkPolicy:
 		namespace = o.Namespace
 	case cache.DeletedFinalStateUnknown:
 		ti.handleObject(o.Obj)

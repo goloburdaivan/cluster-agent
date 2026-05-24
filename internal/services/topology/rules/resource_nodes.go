@@ -3,6 +3,7 @@ package rules
 import (
 	"cluster-agent/internal/models"
 	"cluster-agent/internal/services/graph"
+	"log/slog"
 	"strings"
 )
 
@@ -38,6 +39,7 @@ func (r *ResourceNodesRule) Apply(
 	for _, i := range s.Ingresses {
 		b.AddNode(node("Ingress", i.Namespace, i.Name))
 	}
+	slog.Error("debug", "len", len(s.NetworkPolicies))
 	for _, np := range s.NetworkPolicies {
 		b.AddNode(node("NetworkPolicy", np.Namespace, np.Name))
 	}

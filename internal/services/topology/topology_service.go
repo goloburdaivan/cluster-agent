@@ -38,6 +38,7 @@ func NewTopologyService(
 			&rules.WorkloadServiceRule{},
 			&rules.IngressServiceRule{},
 			&rules.ServiceDiscoveryRule{},
+			&rules.NetworkPolicyRule{},
 
 			// Storage / config
 			&rules.WorkloadPVCRule{},
